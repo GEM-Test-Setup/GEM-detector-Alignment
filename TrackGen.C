@@ -16,7 +16,7 @@ void TrackGen(int random_seed =0){
   
   TRandom *random_gen = new TRandom(random_seed);
   
-  const int nevent = 5000;//total events number
+  const int nevent = 100;//total events number
   double x_real[nevent][3]; // lab frame,aligned
   double y_real[nevent][3];
   double x_gem[nevent][3]; // gem frame , mis-aligned
@@ -65,125 +65,129 @@ void TrackGen(int random_seed =0){
   double z1 = 0; //veritcal position of gem1
   double z2 = -100;
   double z3 = -200;
-  double z_top = 10; // Trig. Scint. postion at the top
-  double z_bottom = -210; //  Trig. Scint.  position at the bottom
-  double scintillator_size = 4 ; // Trig, Scint. size 4x4 cm^2 
-  double x_top, x_bottom, y_top, y_bottom; // Trig. Scint. 
+  double kz = z2/z3;
   double z[3] = {z1,z2,z3};
-  
-  for(int ievt=0;ievt<nevent;ievt++){
-    x_top = random_gen->Uniform(scintillator_size)-scintillator_size/2;
-    y_top = random_gen->Uniform(scintillator_size)-scintillator_size/2;
-    x_bottom = random_gen->Uniform(scintillator_size)-scintillator_size/2;
-    y_bottom = random_gen->Uniform(scintillator_size)-scintillator_size/2;
-    
-    for(int igem =0; igem<3; igem++){
-      x_real[ievt][igem] = (z[igem]-z_top)/(z_bottom-z_top)*(x_bottom-x_top)+x_top;
-      y_real[ievt][igem] = (z[igem]-z_top)/(z_bottom-z_top)*(y_bottom-y_top)+y_top;
-      x_real_val[igem] = x_real[ievt][igem];
-      y_real_val[igem] = y_real[ievt][igem];
-    }
-    // first GEM , no misalignment involved
-    x_gem[ievt][0] =  x_real[ievt][0];
-    y_gem[ievt][0] =  y_real[ievt][0];
-    x_gem_val[0] = x_gem[ievt][0];
-    y_gem_val[0] = y_gem[ievt][0];
+  int ievt =0;
 
-    for(int igem=1;igem<3;igem++){
-      x_gem[ievt][igem] = cos_theta[igem]*x_real[ievt][igem]
-	-sin_theta[igem]*y_real[ievt][igem] + x_offset[igem];
-      y_gem[ievt][igem] = sin_theta[igem]*x_real[ievt][igem]
-	+cos_theta[igem]*y_real[ievt][igem] + y_offset[igem];
-      x_gem_val[igem] = x_gem[ievt][igem];
-      y_gem_val[igem] = y_gem[ievt][igem];
+  double pitch = 0.04; // 400 micron
+  int x_stripline_id;
+  int y_stripline_id;
+
+  while(ievt < nevent){
+
+    // first GEM , no misalignment involved
+    x_real_val[0] = random_gen->Uniform(gem_size)-gem_size/2;
+    y_real_val[0] = random_gen->Uniform(gem_size)-gem_size/2;
+    x_gem_val[0] = x_real_val[0];
+    y_gem_val[0] = y_real_val[0];
+
+    //Last GEM, at the bottom
+    x_gem_val[2] = random_gen->Uniform(gem_size)-gem_size/2;
+    y_gem_val[2] = random_gen->Uniform(gem_size)-gem_size/2;
+
+    x_real_val[2] = cos_theta[2]*(x_gem_val[2]+x_offset[2])
+      -sin_theta[2]*(y_gem_val[2]+y_offset[2]); 
+    y_real_val[2] = sin_theta[2]*(x_gem_val[2]+x_offset[2])
+      +cos_theta[2]*(y_gem_val[2]+y_offset[2]);
+    // we x,y in real coordinate at GEM2  to calculate hits on GEM3
+    // Get 2nd GEM,
+
+    x_real_val[1] = x_real_val[0]- kz*(x_real_val[0]-x_real_val[2]);
+    y_real_val[1] = y_real_val[0]- kz*(y_real_val[0]-y_real_val[2]);
+
+    x_gem_val[1] = cos_theta[1]*x_real_val[1]
+      +sin_theta[1]*y_real_val[1] - x_offset[1];
+    y_gem_val[1] = -sin_theta[1]*x_real_val[1]
+      +cos_theta[1]*y_real_val[1] - y_offset[1];// reverse rotation,extra minus sign on sin_theta,
+    //Check if muon hit is within the GEM plane
+    if( (fabs(x_gem_val[1])<gem_size/2) &&  (fabs(y_gem_val[1])<gem_size/2)){
+      for(int igem=0;igem<3;igem++){
+	// arrays for plots
+	x_real[ievt][igem] = x_real_val[igem];
+	y_real[ievt][igem] = y_real_val[igem];
+	x_gem[ievt][igem] = x_gem_val[igem];
+	y_gem[ievt][igem] = y_gem_val[igem];
+	
+        // Convert floating number precision to GEM resolution       
+	x_stripline_id = floor(x_gem_val[igem]/pitch);
+	x_gem_val[igem] = x_stripline_id * pitch + pitch*0.5;
+	y_stripline_id = floor(y_gem_val[igem]/pitch);
+	y_gem_val[igem] = y_stripline_id * pitch + pitch*0.5;
+      }
+      track->Fill();
+      ievt++;
     }
-    // Convert floating number precision to GEM resolution
-    double pitch = 0.04; // 400 micron
-    int x_stripline_id;
-    int y_stripline_id;
-    for(int igem=0;igem<3;igem++){
-      x_stripline_id = floor(x_gem_val[igem]/pitch);
-      x_gem_val[igem] = x_stripline_id * pitch + pitch*0.5;
-      y_stripline_id = floor(y_gem_val[igem]/pitch);
-      y_gem_val[igem] = y_stripline_id * pitch + pitch*0.5;
-    }
-    track->Fill();
+    else
+      continue;
   }
   track->Write();
   rootfile->Close();
 
   // Plots
-  // TCanvas *can_x = new TCanvas("can_x","can_x",800,800);
-  // TCanvas *can_y = new TCanvas("can_y","can_y",0,800,800,800);
-  // can_x ->Divide(2,1);
-  // can_y ->Divide(2,1);
+  TCanvas *can_lab = new TCanvas("can_lab","can_lab",800,800);
+  TCanvas *can_gem = new TCanvas("can_gem","can_gem",0,800,800,800);
+  can_lab ->Divide(2,1);
+  can_gem ->Divide(2,1);
 
-  // TMultiGraph *mg_xz_real = new TMultiGraph();
-  // TMultiGraph *mg_yz_real = new TMultiGraph();
+  TMultiGraph *mg_xz_real = new TMultiGraph();
+  TMultiGraph *mg_yz_real = new TMultiGraph();
   
-  // TGraph *g_xz_real[nevent];
-  // TGraph *g_yz_real[nevent];
-  // for(int i = 0 ; i<nevent;i++){
-  //   g_xz_real[i] = new TGraph(3,x_real[i],z);
-  //   g_yz_real[i] = new TGraph(3,y_real[i],z);
+  TGraph *g_xz_real[nevent];
+  TGraph *g_yz_real[nevent];
+  for(int i = 0 ; i<nevent;i++){
+    g_xz_real[i] = new TGraph(3,x_real[i],z);
+    g_yz_real[i] = new TGraph(3,y_real[i],z);
     
-  //   g_xz_real[i]->SetMarkerStyle(20);
-  //   g_xz_real[i]->SetLineWidth(1);
-  //   g_xz_real[i]->SetMarkerColor(2);
-  //   g_xz_real[i]->SetLineColor(2);
+    g_xz_real[i]->SetMarkerStyle(20);
+    g_xz_real[i]->SetLineWidth(1);
+    g_xz_real[i]->SetMarkerColor(2);
+    g_xz_real[i]->SetLineColor(2);
 
-  //   g_yz_real[i]->SetMarkerStyle(20);
-  //   g_yz_real[i]->SetLineWidth(1);
-  //   g_yz_real[i]->SetMarkerColor(2);
-  //   g_yz_real[i]->SetLineColor(2);
+    g_yz_real[i]->SetMarkerStyle(20);
+    g_yz_real[i]->SetLineWidth(1);
+    g_yz_real[i]->SetMarkerColor(2);
+    g_yz_real[i]->SetLineColor(2);
 
-  //   mg_xz_real->Add(g_xz_real[i],"lp");
-  //   mg_yz_real->Add(g_yz_real[i],"lp");
-  // }
+    mg_xz_real->Add(g_xz_real[i],"lp");
+    mg_yz_real->Add(g_yz_real[i],"lp");
+  }
 
-  // TMultiGraph *mg_xz_gem = new TMultiGraph();
-  // TMultiGraph *mg_yz_gem = new TMultiGraph();
+  TMultiGraph *mg_xz_gem = new TMultiGraph();
+  TMultiGraph *mg_yz_gem = new TMultiGraph();
   
-  // TGraph *g_xz_gem[nevent];
-  // TGraph *g_yz_gem[nevent];
-  // for(int i = 0 ; i<nevent;i++){
-  //   g_xz_gem[i] = new TGraph(3,x_gem[i],z);
-  //   g_yz_gem[i] = new TGraph(3,y_gem[i],z);
+  TGraph *g_xz_gem[nevent];
+  TGraph *g_yz_gem[nevent];
+  for(int i = 0 ; i<nevent;i++){
+    g_xz_gem[i] = new TGraph(3,x_gem[i],z);
+    g_yz_gem[i] = new TGraph(3,y_gem[i],z);
     
-  //   g_xz_gem[i]->SetMarkerStyle(20);
-  //   g_xz_gem[i]->SetLineWidth(1);
-  //   g_xz_gem[i]->SetMarkerColor(4);
-  //   g_xz_gem[i]->SetLineColor(4);
+    g_xz_gem[i]->SetMarkerStyle(20);
+    g_xz_gem[i]->SetLineWidth(1);
+    g_xz_gem[i]->SetMarkerColor(4);
+    g_xz_gem[i]->SetLineColor(4);
 
-  //   g_yz_gem[i]->SetMarkerStyle(20);
-  //   g_yz_gem[i]->SetLineWidth(1);
-  //   g_yz_gem[i]->SetMarkerColor(4);
-  //   g_yz_gem[i]->SetLineColor(4);
+    g_yz_gem[i]->SetMarkerStyle(20);
+    g_yz_gem[i]->SetLineWidth(1);
+    g_yz_gem[i]->SetMarkerColor(4);
+    g_yz_gem[i]->SetLineColor(4);
 
-  //   mg_xz_gem->Add(g_xz_gem[i],"lp");
-  //   mg_yz_gem->Add(g_yz_gem[i],"lp");
-  // }
+    mg_xz_gem->Add(g_xz_gem[i],"lp");
+    mg_yz_gem->Add(g_yz_gem[i],"lp");
+  }
     
-  // can_x->cd(1);
-  // mg_xz_real->Draw("A");
-  // mg_xz_real->SetTitle("Aligned, z vs x");
-  // can_x->cd(2);
-  // mg_xz_gem->Draw("A");
-  // mg_xz_gem->SetTitle("GEM, z vs x");
+  can_lab->cd(1);
+  mg_xz_real->Draw("A");
+  mg_xz_real->SetTitle("lab frame, z vs x");
+  can_lab->cd(2);
+  mg_yz_real->Draw("A");
+  mg_yz_real->SetTitle("lab frame, z vs y");
+      
 
-    
-  // can_y->cd(1);
-  // mg_yz_real->Draw("A");
-  // mg_yz_real->SetTitle("Aligned, z vs y");
-  // can_y->cd(2);
-  // mg_yz_gem->Draw("A");
-  // mg_yz_gem->SetTitle("GEM, z vs y");
-  
+  can_gem->cd(1);
+  mg_xz_gem->Draw("A");
+  mg_xz_gem->SetTitle("GEM frame, z vs x");
+  can_gem->cd(2);
+  mg_yz_gem->Draw("A");
+  mg_yz_gem->SetTitle("GEM frame, z vs y");
 
-  // TCanvas *c_corr = new TCanvas("c_corr","c_corr",800,800,800,800);
-  // c_corr->cd();
-  // TGraph *g_corr = new TGraph(nevent,x_gem2,x_gem1);
-  // g_corr->SetMarkerStyle(20);
-  // g_corr->SetTitle("X_gem1 vs X_gem2");
-  // g_corr->Draw("AP");
 }
