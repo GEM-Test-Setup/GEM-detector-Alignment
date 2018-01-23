@@ -35,27 +35,27 @@ void RegressTrack(){
   double dummy;
   double fit_up,fit_low;
   double kz=z2/z3;
-  TF1 *f1 = new TF1("f1","[0]*(x-[1])",-10,10);
+  TF1 *f1 = new TF1("f1","[0]*(x+[1])",-10,10);
   
-  track->Draw("x_gem[0]:x_gem[1]>>hx0x1","","prof goff");
+  track->Draw("x_gem[0]:x_gem[1]>>hx0x1","trigger","prof goff");
   fit_low = hx0x1->GetMean(1)-(hx0x1->GetRMS(1));
   fit_up = hx0x1->GetMean(1)+(hx0x1->GetRMS(1));
   hx0x1->Fit("f1","Q0","",fit_low,fit_up);
   x20 = f1->GetParameter(1);
     
-  track->Draw("x_gem[2]:x_gem[1]>>hx1x2","","prof goff");
+  track->Draw("x_gem[2]:x_gem[1]>>hx1x2","trigger","prof goff");
   hx1x2->Fit("f1","Q0","",fit_low,fit_up);
-  x30 = x20 -f1->GetParameter(1);
+  x30 = x20-f1->GetParameter(1);
 
-  track->Draw("y_gem[0]:y_gem[1]>>hy1","","prof goff");
-  fit_low = hy1->GetMean(1)-(hy1->GetRMS(1));
-  fit_up = hy1->GetMean(1)+(hy1->GetRMS(1));
-  hy1->Fit("f1","Q0","",fit_low,fit_up);
+  track->Draw("y_gem[0]:y_gem[1]>>hy0y1","trigger","prof goff");
+  fit_low = hy0y1->GetMean(1)-(hy0y1->GetRMS(1));
+  fit_up = hy0y1->GetMean(1)+(hy0y1->GetRMS(1));
+  hy0y1->Fit("f1","Q0","",fit_low,fit_up);
   y20 = f1->GetParameter(1);
 
-  track->Draw("y_gem[2]:y_gem[1]>>hy1y2","","prof goff");
+  track->Draw("y_gem[2]:y_gem[1]>>hy1y2","trigger","prof goff");
   hy1y2->Fit("f1","Q0","",fit_low,fit_up);
-  y30 = y20 -f1->GetParameter(1);
+  y30 = y20-f1->GetParameter(1);
 
   cout << "x20: " << x20 <<endl;
   cout << "y20: " << y20 <<endl;
@@ -163,11 +163,11 @@ double get_chi2(Double_t *par_full, Double_t *x, double *y){
   
   double kz = z2/z3; // we set z1 at 0;
 
-  double x1_cal = 1.0/(1-kz)*(alpha2*(x2-x20) - beta2*(y2-y20)
-			      -kz*(alpha3*(x3-x30) - beta3*(y3-y30)));
+  double x1_cal = 1.0/(1-kz)*(alpha2*(x2+x20) - beta2*(y2+y20)
+			      -kz*(alpha3*(x3+x30) - beta3*(y3+y30)));
 
-  double y1_cal = 1.0/(1-kz)*(beta2*(x2-x20) + alpha2*(y2-y20)
-			     -kz*(beta3*(x3-x30) +alpha3*(y3-y30)));
+  double y1_cal = 1.0/(1-kz)*(beta2*(x2+x20) + alpha2*(y2+y20)
+			     -kz*(beta3*(x3+x30) +alpha3*(y3+y30)));
 
   double chi2 = (x[0]-x1_cal)**2 + (y[0]-y1_cal)**2;
   return chi2;
