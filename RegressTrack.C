@@ -35,27 +35,33 @@ void RegressTrack(){
   double dummy;
   double fit_up,fit_low;
   double kz=z2/z3;
-  TF1 *f1 = new TF1("f1","[0]*(x+[1])",-10,10);
+  TF1 *f1 = new TF1("f1","[0]*x+[1]",-10,10);
   
-  track->Draw("x_gem[0]:x_gem[1]>>hx0x1","trigger","prof goff");
+  track->Draw("x_gem[0]:x_gem[1]>>hx0x1","trigger"," prof goff");
   fit_low = hx0x1->GetMean(1)-(hx0x1->GetRMS(1));
   fit_up = hx0x1->GetMean(1)+(hx0x1->GetRMS(1));
-  hx0x1->Fit("f1","Q0","",fit_low,fit_up);
-  x20 = f1->GetParameter(1);
+  hx0x1->Fit("f1","Q0");
+  x20 = f1->GetParameter(1)/f1->GetParameter(0);
     
-  track->Draw("x_gem[2]:x_gem[1]>>hx1x2","trigger","prof goff");
+  f1->SetParameter(0,0);
+  f1->SetParameter(1,0);
+  track->Draw("x_gem[2]:x_gem[1]>>hx1x2","trigger"," prof goff");
   hx1x2->Fit("f1","Q0","",fit_low,fit_up);
-  x30 = x20-f1->GetParameter(1);
+  x30 = x20-f1->GetParameter(1)/f1->GetParameter(0);
 
-  track->Draw("y_gem[0]:y_gem[1]>>hy0y1","trigger","prof goff");
+  f1->SetParameter(0,0);
+  f1->SetParameter(1,0);
+  track->Draw("y_gem[0]:y_gem[1]>>hy0y1","trigger","prof  goff");
   fit_low = hy0y1->GetMean(1)-(hy0y1->GetRMS(1));
   fit_up = hy0y1->GetMean(1)+(hy0y1->GetRMS(1));
-  hy0y1->Fit("f1","Q0","",fit_low,fit_up);
-  y20 = f1->GetParameter(1);
+  hy0y1->Fit("f1","Q0","");
+  y20 = f1->GetParameter(1)/f1->GetParameter(0);
 
+  f1->SetParameter(0,0);
+  f1->SetParameter(1,0);
   track->Draw("y_gem[2]:y_gem[1]>>hy1y2","trigger","prof goff");
   hy1y2->Fit("f1","Q0","",fit_low,fit_up);
-  y30 = y20-f1->GetParameter(1);
+  y30 = y20-f1->GetParameter(1)/f1->GetParameter(0);
 
   cout << "x20: " << x20 <<endl;
   cout << "y20: " << y20 <<endl;
@@ -75,11 +81,11 @@ void RegressTrack(){
   Double_t step[6]={0.01,0.01,0.01,0.01,0.01,0.01};
   
   gMinuit->mnparm(0,"2nd theta",vstart[0],step[0],0,0,ierflg);
-  gMinuit->mnparm(1,"2nd X offset",vstart[1],step[1],0,0,ierflg);
-  gMinuit->mnparm(2,"2nd Y offset",vstart[2],step[2],0,0,ierflg);
+  gMinuit->mnparm(1,"2nd X offset",vstart[1],step[1],-10,10,ierflg);
+  gMinuit->mnparm(2,"2nd Y offset",vstart[2],step[2],-10,10,ierflg);
   gMinuit->mnparm(3,"3rd theta",vstart[3],step[3],0,0,ierflg);
-  gMinuit->mnparm(4,"3rd X offset",vstart[4],step[4],0,0,ierflg);
-  gMinuit->mnparm(5,"3rd Y offset",vstart[5],step[5],0,0,ierflg);
+  gMinuit->mnparm(4,"3rd X offset",vstart[4],step[4],-10,10,ierflg);
+  gMinuit->mnparm(5,"3rd Y offset",vstart[5],step[5],-10,10,ierflg);
 
   // MIGRAD
   arglist[0]=5000;
@@ -106,7 +112,10 @@ void RegressTrack(){
   cout << "beta2: " << beta2 <<endl;
   cout << "alpha3: " << alpha3 <<endl;
   cout << "beta3: " << beta3 <<endl;
-
+  cout << "Check Constant:" <<
+    alpha2*x20 - beta2*y20 - kz*alpha3*x30 + kz*beta3*y30
+       <<endl;
+  
   FILE *output = fopen("regression.txt","a");
   fprintf(output,"%lf \t", x20);
   fprintf(output,"%lf \t", y20);

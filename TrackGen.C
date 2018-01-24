@@ -68,6 +68,10 @@ void TrackGen(int random_seed =0, bool plot_flag =0){
   double z2 = -100;
   double z3 = -200;
   double kz = z2/z3;
+
+  cout << "Check Constant:" <<
+    cos_theta[1]*x_offset[1]-sin_theta[1]*y_offset[1]-kz*cos_theta[2]*x_offset[2]+kz*sin_theta[2]*y_offset[2] <<endl;
+
   double z[3] = {z1,z2,z3};
   int ievt =0;
 
@@ -138,9 +142,10 @@ void TrackGen(int random_seed =0, bool plot_flag =0){
       }
       else
 	trigger_flag = 0;
-      
-      track->Fill();
-      ievt++;
+      if(trigger_flag){
+	track->Fill();
+	ievt++;
+      }
     }
   }
   track->Write();
