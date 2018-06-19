@@ -18,6 +18,7 @@ void visualize(Point A, Point B, Point C)
     line->SetNextPoint(A.x, A.y, A.z);
     line->SetNextPoint(B.x, B.y, B.z);
     line->SetNextPoint(C.x, C.y, C.z);
+    line->SetLineColor((rand() %47)+3);
     line->DrawClone();
 }
 
@@ -29,7 +30,7 @@ void initVisualize()
     for (int i = 0; i < 3; i++)
     {
         planes[i] = new double[3];
-        planes[i][0] = 100 * i;      
+        planes[i][0] = -100 * i;      
         planes[i][1] = 100;      
         planes[i][2] = 100;      
     }
@@ -55,26 +56,30 @@ void initVisualize(Point origin, double **planes)
         plane->SetNextPoint(origin.x+length, origin.y+width, origin.z + z);
         plane->SetNextPoint(origin.x, origin.y + width, origin.z + z);
         plane->SetNextPoint(origin.x, origin.y, origin.z + z);
+        plane->SetLineColor(2);
         plane->Draw();
     }
     init = true;
 }
 
-
 void checkLine()
 {
-    Point a, b, c;
+    Point a, b, c, d;
     a.x = 25;
     a.y = 10;
-    a.z = 200;
+    a.z = -200;
     
     b.x = 50;
     b.y = 20;
-    b.z = 100;
+    b.z = -100;
     
     c.x = 75;
     c.y = 30;
     c.z = 0;
+    
+    d.x = 70;
+    d.y = 35;
+    d.z = 0;
 
     std::cout << "Angle " << getAngle(a, b, c) << " rad, " << radToDeg(getAngle(a, b, c)) << " deg" << std::endl;
     std::cout << "Sane? "; 
@@ -85,5 +90,6 @@ void checkLine()
     
     initVisualize();
     visualize(a, b, c);
+    visualize(a, b, d);
 }
 

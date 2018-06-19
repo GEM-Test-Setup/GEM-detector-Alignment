@@ -16,7 +16,7 @@ struct Vector
 {
     double row[3];
     
-    Vector(double x=0, double y=0, double z=0) : row[0](x),row[1](y), row[2](z){ }
+    Vector(double x=0, double y=0, double z=0) : row[0](x), row[1](y), row[2](z){ }
     
     Vector(Point p):v[0](p.x), v[1](p.y), v[2](p.z){ }
 
@@ -27,6 +27,20 @@ struct Vector
         return row[index];
     }
 };
+
+struct Track
+{
+    Point points[3];
+    
+    Track(Point A, Point B, Point C) : points[0](A), points[1](B), points(C){}
+
+    double &operator[](int index)
+    {
+        return points[index];
+    }
+};
+
+
 //Point::Point(Vector v): x(v[0]), y(v[1]), z(v[2]) {}
 //Root crashes silently on this line
 
