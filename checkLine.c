@@ -1,20 +1,6 @@
 #include <iostream>
 #include "linalg.h"
 
-double getAngle(Point top, Point mid, Point bot)
-{
-    //get the angle between three points such that 180 = colinear
-    //use the middle as the origin
-    //
-    //Use dot product AB dot BC = |AB| |BC| cos \theta 
-    //\theta = arccos ((AB dot BC) / (|AB| |BC|))
-    
-    double num = ( dot (top, mid, mid, bot)
-            / (length(top, mid) * length(mid, bot)) );
-    double res = acos( num <= -1? -1 : num >= 1? 1 : num );
-    return ((res < 0) ? res + 2*pi : res); //force angle to be positive
-}
-
 bool isSane(Point A, Point B, Point C)
 {
     
