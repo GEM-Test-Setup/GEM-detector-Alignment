@@ -1,29 +1,43 @@
 #include <iostream>
 const double pi = 3.1415926535897;
 
+struct Vector;
+struct Point;
+
 struct Point{
     double x;
     double y;
     double z;
 
     Point(double tX=0, double tY=0, double tZ=0): x(tX), y(tY), z(tZ){}
+    
 };
 struct Vector
 {
     double row[3];
     
-    Vector(double x=0, double y=0, double z=0)
-    {
-        row[0] = x;
-        row[1] = y;
-        row[2] = z;
-    }
+    Vector(double x=0, double y=0, double z=0) : row[0](x),row[1](y), row[2](z){ }
     
+    Vector(Point p):v[0](p.x), v[1](p.y), v[2](p.z){ }
+
+    Vector(Point A, Point B)v[0](B.x - A.x), v[1](B.y - A.y) , v[2](B.z-A.z){}
+
     double &operator[](int index)
     {
         return row[index];
     }
 };
+//Point::Point(Vector v): x(v[0]), y(v[1]), z(v[2]) {}
+//Root crashes silently on this line
+
+Point makePoint(Vector v) 
+{
+    Point p;
+    p.x = v[0];
+    p.y = v[1];
+    p.z = v[2];
+    return p;
+}
 
 struct Matrix{
     Vector cols[3];
@@ -35,22 +49,6 @@ struct Matrix{
     
     Matrix(){ }
 };
-
-Point makePoint(Vector v)
-{
-    Point p;
-    p.x = v[0];
-    p.y = v[1];
-    p.z = v[2];
-}
-
-Vector makeVector(Point p)
-{
-    Vector v;
-    v[0] = p.x;
-    v[1] = p.y;
-    v[2] = p.z;
-}
 
 double radToDeg(double rad)
 {
@@ -64,16 +62,38 @@ double degToRad(double deg)
 //return  AB dot CD
 double dot(Point A, Point B, Point C, Point D)
 {
-    return (B.x - A.x) * (D.x - C.x )
+    return dot(Vector(A, B), Vector(C,D));
+    /*return (B.x - A.x) * (D.x - C.x )
     + (B.y - A.y) * (D.y - C.y )
-    + (B.z - A.z) * (D.z - C.z );
+    + (B.z - A.z) * (D.z - C.z );*/
+}
+
+double dot(Vector v, Vector w)
+{
+    double res = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        res += v[i] * w[i];
+    }
+    return res;
 }
 
 double length(Point A, Point B)
 {
-    return sqrt(pow(A.x - B.x, 2) 
+    return length(Vector(A, B));
+    /*return sqrt(pow(A.x - B.x, 2) 
             + pow(A.y - B.y, 2) 
-            + pow(A.z - B.z, 2));
+            + pow(A.z - B.z, 2));*/
+}
+
+double length(Vector v)
+{
+    double len = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        len += pow(v[i], 2);
+    }
+    return sqrt(len);
 }
 
 double getAngle(Point top, Point mid, Point bot)
@@ -153,7 +173,7 @@ Matrix add(Matrix A, Matrix B)
         }
     }
 }
-
+//This is fine for 3x3 and 2x2 (small=true) matrices
 double det(Matrix m, bool small=false)
 {
     if (small)
@@ -176,6 +196,7 @@ double det(Matrix m, bool small=false)
     }
 }
 
+//Rotation about each x, y, and z axis
 Matrix getRotation(double xRad=0, double yRad=0, double zRad=0)
 {
     Matrix xRot, yRot, zRot;
