@@ -117,9 +117,19 @@ double getAngle(Point top, Point mid, Point bot)
     //
     //Use dot product AB dot BC = |AB| |BC| cos \theta 
     //\theta = arccos ((AB dot BC) / (|AB| |BC|))
-    
-    double num = ( dot (top, mid, mid, bot)
+    Vector A(top, mid);
+    Vector B(mid, bot);
+    return getAngle(A, B);
+    /*double num = ( dot (top, mid, mid, bot)
             / (length(top, mid) * length(mid, bot)) );
+    double res = acos( num <= -1? -1 : num >= 1? 1 : num );
+    return ((res < 0) ? res + 2*pi : res); //force angle to be positive
+    */
+}
+
+double getAngle(Vector A, Vector B)
+{
+    double num = dot(A, B) / (length(A) * length(B)); 
     double res = acos( num <= -1? -1 : num >= 1? 1 : num );
     return ((res < 0) ? res + 2*pi : res); //force angle to be positive
 }
