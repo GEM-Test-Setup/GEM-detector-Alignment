@@ -5,12 +5,14 @@ struct Point{
     double x;
     double y;
     double z;
+
+    Point(double tX=0, double tY=0, double tZ=0): x(tX), y(tY), z(tZ){}
 };
 struct Vector
 {
     double row[3];
     
-    Vector(int x=0, int y=0, int z=0)
+    Vector(double x=0, double y=0, double z=0)
     {
         row[0] = x;
         row[1] = y;
