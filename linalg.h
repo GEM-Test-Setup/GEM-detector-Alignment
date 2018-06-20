@@ -6,7 +6,10 @@ struct Point{
     Double_t y;
     Double_t z;
 
-    Point(Double_t tX=0, Double_t tY=0, Double_t tZ=0): x(tX), y(tY), z(tZ){}
+    Point(Double_t tX=0, Double_t tY=0, Double_t tZ=0)
+    {
+        x = tX; y = tY; z = tZ;
+    }
 
 };
 struct Vector
@@ -56,13 +59,22 @@ struct Track
 {
     Point points[3];
 
-    Track(Point A, Point B, Point C) : points[0](A), points[1](B), points[2](C){}
-    Track(Vector A, Vector B, Vector C)
+    Track() {}
+    Track(Point A, Point B, Point C)
     {
-        Track(makePoint(A), makePoint(B), makePoint(C));
+        points[0] = A; 
+        points[1] = B; 
+        points[2] = C;
     }
 
-    Double_t &operator[](const int index)
+    Track(Vector A, Vector B, Vector C)
+    {
+        points[0] = makePoint(A);
+        points[1] = makePoint(B);
+        points[2] = makePoint(C);
+    }
+
+    Point &operator[](const int index)
     {   
         return points[index];
     }
@@ -73,7 +85,7 @@ struct Track
 struct Matrix{
     Vector cols[3];
 
-    Vector &operator[](int index)
+    Vector &operator[](const int index)
     {
         return cols[index];
     }
@@ -132,7 +144,9 @@ Double_t length(Vector v)
 
 Double_t getAngle(Track t)
 {
-    return getAngle(t[0], t[1], t[2]);
+    Double_t res = getAngle(t[0], t[1], t[2]);
+    //std::cout << "angle: " << res << std::endl;
+    return res;
 }
 
 Double_t getAngle(Point top, Point mid, Point bot)
