@@ -40,19 +40,6 @@ struct Vector
     }
 };
 
-struct Track
-{
-    Point points[3];
-
-    Track(Point A, Point B, Point C) : points[0](A), points[1](B), points(C){}
-
-    Double_t &operator[](const int index)
-    {   
-        return points[index];
-    }
-};
-
-
 //Point::Point(Vector v): x(v[0]), y(v[1]), z(v[2]) {}
 //Root crashes silently on this line
 
@@ -64,6 +51,24 @@ Point makePoint(Vector v)
     p.z = v[2];
     return p;
 }
+
+struct Track
+{
+    Point points[3];
+
+    Track(Point A, Point B, Point C) : points[0](A), points[1](B), points[2](C){}
+    Track(Vector A, Vector B, Vector C)
+    {
+        Track(makePoint(A), makePoint(B), makePoint(C));
+    }
+
+    Double_t &operator[](const int index)
+    {   
+        return points[index];
+    }
+};
+
+
 
 struct Matrix{
     Vector cols[3];
