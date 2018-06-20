@@ -1,19 +1,19 @@
 #include <iostream>
-const double pi = 3.1415926535897;
+const Double_t pi = 3.1415926535897;
 
 struct Point{
-    double x;
-    double y;
-    double z;
+    Double_t x;
+    Double_t y;
+    Double_t z;
 
-    Point(double tX=0, double tY=0, double tZ=0): x(tX), y(tY), z(tZ){}
+    Point(Double_t tX=0, Double_t tY=0, Double_t tZ=0): x(tX), y(tY), z(tZ){}
 
 };
 struct Vector
 {
-    double row[3];
+    Double_t row[3];
 
-    Vector(double x=0, double y=0, double z=0) 
+    Vector(Double_t x=0, Double_t y=0, Double_t z=0) 
     {
         row[0] = x; 
         row[1] = y; 
@@ -34,7 +34,7 @@ struct Vector
         row[2] = B.z - A.z;
     }
 
-    double &operator[](const int index)
+    Double_t &operator[](const int index)
     {
         return row[index];
     }
@@ -46,7 +46,7 @@ struct Track
 
     Track(Point A, Point B, Point C) : points[0](A), points[1](B), points(C){}
 
-    double &operator[](const int index)
+    Double_t &operator[](const int index)
     {   
         return points[index];
     }
@@ -79,17 +79,17 @@ struct Matrix{
     }
 };
 
-double radToDeg(double rad)
+Double_t radToDeg(Double_t rad)
 {
     return rad * 180/pi;
 }
 
-double degToRad(double deg)
+Double_t degToRad(Double_t deg)
 {
     return deg * pi/180;
 }
 //return  AB dot CD
-double dot(Point A, Point B, Point C, Point D)
+Double_t dot(Point A, Point B, Point C, Point D)
 {
     return dot(Vector(A, B), Vector(C,D));
     /*return (B.x - A.x) * (D.x - C.x )
@@ -97,9 +97,9 @@ double dot(Point A, Point B, Point C, Point D)
       + (B.z - A.z) * (D.z - C.z );*/
 }
 
-double dot(Vector v, Vector w)
+Double_t dot(Vector v, Vector w)
 {
-    double res = 0;
+    Double_t res = 0;
     for (int i = 0; i < 3; i++)
     {
         res += v[i] * w[i];
@@ -107,7 +107,7 @@ double dot(Vector v, Vector w)
     return res;
 }
 
-double length(Point A, Point B)
+Double_t length(Point A, Point B)
 {
     return length(Vector(A, B));
     /*return sqrt(pow(A.x - B.x, 2) 
@@ -115,9 +115,9 @@ double length(Point A, Point B)
       + pow(A.z - B.z, 2));*/
 }
 
-double length(Vector v)
+Double_t length(Vector v)
 {
-    double len = 0;
+    Double_t len = 0;
     for (int i = 0; i < 3; i++)
     {
         len += pow(v[i], 2);
@@ -125,7 +125,7 @@ double length(Vector v)
     return sqrt(len);
 }
 
-double getAngle(Point top, Point mid, Point bot)
+Double_t getAngle(Point top, Point mid, Point bot)
 {
     //get the angle between three points such that 180 = colinear
     //use the middle as the origin
@@ -135,21 +135,21 @@ double getAngle(Point top, Point mid, Point bot)
     Vector A(top, mid);
     Vector B(mid, bot);
     return getAngle(A, B);
-    /*double num = ( dot (top, mid, mid, bot)
+    /*Double_t num = ( dot (top, mid, mid, bot)
       / (length(top, mid) * length(mid, bot)) );
-      double res = acos( num <= -1? -1 : num >= 1? 1 : num );
+      Double_t res = acos( num <= -1? -1 : num >= 1? 1 : num );
       return ((res < 0) ? res + 2*pi : res); //force angle to be positive
       */
 }
 
-double getAngle(Vector A, Vector B)
+Double_t getAngle(Vector A, Vector B)
 {
-    double num = dot(A, B) / (length(A) * length(B)); 
-    double res = acos( num <= -1? -1 : num >= 1? 1 : num );
+    Double_t num = dot(A, B) / (length(A) * length(B)); 
+    Double_t res = acos( num <= -1? -1 : num >= 1? 1 : num );
     return ((res < 0) ? res + 2*pi : res); //force angle to be positive
 }
 
-Vector multiply(double c, Vector v)
+Vector multiply(Double_t c, Vector v)
 {
     Vector res;
     for (int i = 0; i < 3; i++)
@@ -157,7 +157,7 @@ Vector multiply(double c, Vector v)
     return res;
 }
 
-Matrix multiply (double c, Matrix m)
+Matrix multiply (Double_t c, Matrix m)
 {
     Matrix res;
     for (int i = 0; i < 3; i++)
@@ -186,7 +186,7 @@ Matrix multiply(Matrix A, Matrix B)
         for (int j = 0; j < 3; j++)
         {
             for (int k = 0; k < 3; k++)
-                res[i][j] += A[i][k] * B[j][k];
+                res[i][j] += A[k][i] * B[j][k];
         }
     }
     return res;
@@ -213,7 +213,7 @@ Matrix add(Matrix A, Matrix B)
     }
 }
 //This is fine for 3x3 and 2x2 (small=true) matrices
-double det(Matrix m, bool small=false)
+Double_t det(Matrix m, bool small=false)
 {
     if (small)
     {
@@ -236,7 +236,7 @@ double det(Matrix m, bool small=false)
 }
 
 //Rotation about each x, y, and z axis
-Matrix getRotation(double xRad=0, double yRad=0, double zRad=0)
+Matrix getRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
 {
     Matrix xRot, yRot, zRot;
     xRot[0][0] = 1;
@@ -259,7 +259,7 @@ Matrix getRotation(double xRad=0, double yRad=0, double zRad=0)
     return multiply(multiply(xRot, yRot), zRot);   
 }
 
-Vector getTranslation(double x, double y, double z)
+Vector getTranslation(Double_t x, Double_t y, Double_t z)
 {
     Vector v;
     v[0] = x;
