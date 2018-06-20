@@ -90,7 +90,12 @@ struct Matrix{
         return cols[index];
     }
 
-    Matrix(Vector A, Vector B, Vector C): cols[0](A), cols[1](B), cols[2](C) { }
+    Matrix(Vector A, Vector B, Vector C) 
+    { 
+        cols[0] = A;
+        cols[1] = B; 
+        cols[2] = C;
+    }
     Matrix()
     { 
     }
@@ -105,14 +110,6 @@ Double_t degToRad(Double_t deg)
 {
     return deg * pi/180;
 }
-//return  AB dot CD
-Double_t dot(Point A, Point B, Point C, Point D)
-{
-    return dot(Vector(A, B), Vector(C,D));
-    /*return (B.x - A.x) * (D.x - C.x )
-      + (B.y - A.y) * (D.y - C.y )
-      + (B.z - A.z) * (D.z - C.z );*/
-}
 
 Double_t dot(Vector v, Vector w)
 {
@@ -124,12 +121,15 @@ Double_t dot(Vector v, Vector w)
     return res;
 }
 
-Double_t length(Point A, Point B)
+//return  AB dot CD
+Double_t dot(Point A, Point B, Point C, Point D)
 {
-    return length(Vector(A, B));
-    /*return sqrt(pow(A.x - B.x, 2) 
-      + pow(A.y - B.y, 2) 
-      + pow(A.z - B.z, 2));*/
+    Vector v(A, B);
+    Vector w(C ,D);
+    return dot(v, w);
+    /*return (B.x - A.x) * (D.x - C.x )
+      + (B.y - A.y) * (D.y - C.y )
+      + (B.z - A.z) * (D.z - C.z );*/
 }
 
 Double_t length(Vector v)
@@ -140,13 +140,21 @@ Double_t length(Vector v)
         len += pow(v[i], 2);
     }
     return sqrt(len);
+
+}
+Double_t length(Point A, Point B)
+{
+    return length(Vector(A, B));
+    /*return sqrt(pow(A.x - B.x, 2) 
+      + pow(A.y - B.y, 2) 
+      + pow(A.z - B.z, 2));*/
 }
 
-Double_t getAngle(Track t)
+Double_t getAngle(Vector A, Vector B)
 {
-    Double_t res = getAngle(t[0], t[1], t[2]);
-    //std::cout << "angle: " << res << std::endl;
-    return res;
+    Double_t num = dot(A, B) / (length(A) * length(B)); 
+    Double_t res = acos( num <= -1? -1 : num >= 1? 1 : num );
+    return ((res < 0) ? res + 2*pi : res); //force angle to be positive
 }
 
 Double_t getAngle(Point top, Point mid, Point bot)
@@ -166,11 +174,11 @@ Double_t getAngle(Point top, Point mid, Point bot)
       */
 }
 
-Double_t getAngle(Vector A, Vector B)
+Double_t getAngle(Track t)
 {
-    Double_t num = dot(A, B) / (length(A) * length(B)); 
-    Double_t res = acos( num <= -1? -1 : num >= 1? 1 : num );
-    return ((res < 0) ? res + 2*pi : res); //force angle to be positive
+    Double_t res = getAngle(t[0], t[1], t[2]);
+    //std::cout << "angle: " << res << std::endl;
+    return res;
 }
 
 Vector multiply(Double_t c, Vector v)
