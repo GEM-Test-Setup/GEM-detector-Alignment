@@ -4,7 +4,7 @@
 bool isSane(Point A, Point B, Point C)
 {
     
-    return getAngle(A, B, C) < 0.01; //radians
+    return getAngle(A, B, C)-degToRad(180) < 0.01; //radians
 }
 bool init = false;
 TMultiGraph *graph;

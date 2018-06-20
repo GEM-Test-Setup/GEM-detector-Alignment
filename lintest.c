@@ -12,7 +12,7 @@ void lintest()
     Matrix m = getRotation(pi, pi, pi);
     printMatrix(m);
     
-    m = multiply(1, m);
+    m = multiply(2, m);
     printMatrix(m);
     std::cout << det(m) << std::endl;
 
@@ -21,4 +21,10 @@ void lintest()
     printVector(p);
 
     Track t(p, p, p);
+
+
+    Vector a, b;
+    a = getTranslation(-1, 0, 0);
+    b = getTranslation(0, 1, 1);
+    std::cout << "angle: " << getAngle(a,b) << std::endl; 
 }

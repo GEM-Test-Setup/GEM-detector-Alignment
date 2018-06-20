@@ -133,7 +133,7 @@ Double_t getAngle(Point top, Point mid, Point bot)
     //Use dot product AB dot BC = |AB| |BC| cos \theta 
     //\theta = arccos ((AB dot BC) / (|AB| |BC|))
     Vector A(top, mid);
-    Vector B(mid, bot);
+    Vector B(bot, mid);
     return getAngle(A, B);
     /*Double_t num = ( dot (top, mid, mid, bot)
       / (length(top, mid) * length(mid, bot)) );
