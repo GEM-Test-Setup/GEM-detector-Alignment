@@ -125,6 +125,11 @@ Double_t length(Vector v)
     return sqrt(len);
 }
 
+Double_t getAngle(Track t)
+{
+    return getAngle(t[0], t[1], t[2]);
+}
+
 Double_t getAngle(Point top, Point mid, Point bot)
 {
     //get the angle between three points such that 180 = colinear
@@ -199,6 +204,7 @@ Vector add(Vector v, Vector w)
     {
         res[i] = v[i] + w[i];
     }
+    return res;
 }
 
 Matrix add(Matrix A, Matrix B)
@@ -211,6 +217,7 @@ Matrix add(Matrix A, Matrix B)
             res[i][j] = A[i][j] + B[i][j];       
         }
     }
+    return res;
 }
 //This is fine for 3x3 and 2x2 (small=true) matrices
 Double_t det(Matrix m, bool small=false)
