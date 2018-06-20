@@ -1,28 +1,40 @@
 #include <iostream>
 const double pi = 3.1415926535897;
 
-struct Vector;
-struct Point;
-
 struct Point{
     double x;
     double y;
     double z;
 
     Point(double tX=0, double tY=0, double tZ=0): x(tX), y(tY), z(tZ){}
-    
+
 };
 struct Vector
 {
     double row[3];
-    
-    Vector(double x=0, double y=0, double z=0) : row[0](x), row[1](y), row[2](z){ }
-    
-    Vector(Point p):v[0](p.x), v[1](p.y), v[2](p.z){ }
 
-    Vector(Point A, Point B)v[0](B.x - A.x), v[1](B.y - A.y) , v[2](B.z-A.z){}
+    Vector(double x=0, double y=0, double z=0) 
+    {
+        row[0] = x; 
+        row[1] = y; 
+        row[2] = z;
+    }
 
-    double &operator[](int index)
+    Vector(Point p)
+    {
+        row[0] = p.x; 
+        row[1] = p.y; 
+        row[2] = p.z;
+    }
+
+    Vector(Point A, Point B) 
+    {
+        row[0] = B.x - A.x; 
+        row[1] = B.y - A.y; 
+        row[2] = B.z - A.z;
+    }
+
+    double &operator[](const int index)
     {
         return row[index];
     }
@@ -31,11 +43,11 @@ struct Vector
 struct Track
 {
     Point points[3];
-    
+
     Track(Point A, Point B, Point C) : points[0](A), points[1](B), points(C){}
 
-    double &operator[](int index)
-    {
+    double &operator[](const int index)
+    {   
         return points[index];
     }
 };
@@ -55,13 +67,16 @@ Point makePoint(Vector v)
 
 struct Matrix{
     Vector cols[3];
-    
+
     Vector &operator[](int index)
     {
         return cols[index];
     }
-    
-    Matrix(){ }
+
+    Matrix(Vector A, Vector B, Vector C): cols[0](A), cols[1](B), cols[2](C) { }
+    Matrix()
+    { 
+    }
 };
 
 double radToDeg(double rad)
@@ -78,8 +93,8 @@ double dot(Point A, Point B, Point C, Point D)
 {
     return dot(Vector(A, B), Vector(C,D));
     /*return (B.x - A.x) * (D.x - C.x )
-    + (B.y - A.y) * (D.y - C.y )
-    + (B.z - A.z) * (D.z - C.z );*/
+      + (B.y - A.y) * (D.y - C.y )
+      + (B.z - A.z) * (D.z - C.z );*/
 }
 
 double dot(Vector v, Vector w)
@@ -96,8 +111,8 @@ double length(Point A, Point B)
 {
     return length(Vector(A, B));
     /*return sqrt(pow(A.x - B.x, 2) 
-            + pow(A.y - B.y, 2) 
-            + pow(A.z - B.z, 2));*/
+      + pow(A.y - B.y, 2) 
+      + pow(A.z - B.z, 2));*/
 }
 
 double length(Vector v)
@@ -121,10 +136,10 @@ double getAngle(Point top, Point mid, Point bot)
     Vector B(mid, bot);
     return getAngle(A, B);
     /*double num = ( dot (top, mid, mid, bot)
-            / (length(top, mid) * length(mid, bot)) );
-    double res = acos( num <= -1? -1 : num >= 1? 1 : num );
-    return ((res < 0) ? res + 2*pi : res); //force angle to be positive
-    */
+      / (length(top, mid) * length(mid, bot)) );
+      double res = acos( num <= -1? -1 : num >= 1? 1 : num );
+      return ((res < 0) ? res + 2*pi : res); //force angle to be positive
+      */
 }
 
 double getAngle(Vector A, Vector B)
@@ -259,7 +274,7 @@ void printMatrix(Matrix m)
     {
         for (int j = 0; j < 3; j++)
         {
-            std::cout << m[i][j] << " "; 
+            std::cout << m[j][i] << " "; 
         }
         std::cout << std::endl;
     }
