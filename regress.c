@@ -76,7 +76,7 @@ void regress()
 void fcn(Int_t& npar, Double_t *gin, Double_t& f, Double_t* par, Int_t flag)
 {
     f = 0;
-    for (int j = 0; j < data->size(); j++)
+    for (int j = 0; j < ntracks; j++)
     {
         Track current = tracks[i];  
         Vector vec[2];
