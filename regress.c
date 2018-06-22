@@ -1,18 +1,34 @@
 #include "linalg.h"
+#include <vector>
 
-Track *original;
+#ifdef __MAKECINT__ 
+#pragma link C++ class vector< Track >+; 
+#endif
+
+const int ntracks = 100;
+Track tracks[ntracks];
 
 void regress()
 {
-    Point A(0, 0, 200);
-    Point B(10, 5, 100);
-    Point C(20, 10, 0);
+    
+    for (int i = 0; i < ntracks; i++)
+    {
+        Double_t randx1, randx2, randy1, randy2;
+        randx1 = rand()%10 -5;
+        randx2 = rand()%10 -5;
+        randy2 = rand()%10 -5;
+        randy2 = rand()%10 -5;
 
-    Vector vecC(C);
-    C = makePoint(add(vecC, getTranslation(.5, 1, 1.5)));
+        Point A(randx1, randy1, 200);
+        Point B((randx1 + randx2)/2, (randy1+randy2)/2, 100);
+        Point C(randx2, randy2, 0);
 
-    original = new Track(A, B, C);
+        Vector vecC(C);
+        C = makePoint(add(vecC, getTranslation(.5, 1, 0)));
 
+        Track c(A, B, C);
+        tracks[i] = c;
+    }   
     TMinuit* gMinuit = new TMinuit(6*2); //3 trans, 3 rot for 2 planes. 6*2 = 12   
     Double_t minRot = -pi; //Radians
     Double_t maxRot = pi;
@@ -59,16 +75,20 @@ void regress()
 
 void fcn(Int_t& npar, Double_t *gin, Double_t& f, Double_t* par, Int_t flag)
 {
-    Track &current = *original;  
-    Vector vec[2];
-    for (int i = 0; i < 2; i++)
+    f = 0;
+    for (int j = 0; j < data->size(); j++)
     {
-        vec[i] = current[i+1];
-        vec[i] = multiply(getRotation(par[3+6*i], par[4+6*i], par[5+6*i]), vec[i]);
-        vec[i] = add(vec[i], getTranslation(par[0+6*i], par[1+6*i], par[2+6*i]));
+        Track current = tracks[i];  
+        Vector vec[2];
+        for (int i = 0; i < 2; i++)
+        {
+            vec[i] = current[i+1];
+            vec[i] = multiply(getRotation(par[3+6*i], par[4+6*i], par[5+6*i]), vec[i]);
+            vec[i] = add(vec[i], getTranslation(par[0+6*i], par[1+6*i], par[2+6*i]));
+        }
+        Track translated(current[0], vec[0], vec[1]);
+        f += getChi2(translated);
     }
-    Track translated(current[0], vec[0], vec[1]);
-    f = getChi2(translated);
 }
 
 Double_t getChi2(Track observed)
