@@ -41,6 +41,14 @@ void lintest()
     printVector(c);
 
     std::cout << "angle: " << getAngle(t) << std::endl;
+    
+    std::cout << "Printing d 4, 5, 6" << std::endl;
+    Vector d(4, 5, 6);
+    printVector(d);
+    
+    std::cout << "Printing identity by 0 rot" << std::endl;
+    Matrix m = getRotation(0,0,0);
+    printMatrix(m);
     //std::cout << "angle: " << getAngle(a, b, c) << std::endl;
     
 

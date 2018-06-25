@@ -23,14 +23,14 @@ struct Vector
         row[2] = z;
     }
 
-    Vector(Point p)
+    Vector(const Point &p)
     {
         row[0] = p.x; 
         row[1] = p.y; 
         row[2] = p.z;
     }
 
-    Vector(Point A, Point B) 
+    Vector(const Point &A, const Point &B) 
     {
         row[0] = B.x - A.x; 
         row[1] = B.y - A.y; 
@@ -41,12 +41,17 @@ struct Vector
     {
         return row[index];
     }
+    
+    const Double_t &operator[](const int index) const
+    {
+        return row[index];
+    }
 };
 
 //Point::Point(Vector v): x(v[0]), y(v[1]), z(v[2]) {}
 //Root crashes silently on this line
 
-Point makePoint(Vector v) 
+Point makePoint(const Vector &v) 
 {
     Point p;
     p.x = v[0];
@@ -60,14 +65,14 @@ struct Track
     Point points[3];
 
     Track() {}
-    Track(Point A, Point B, Point C)
+    Track(const Point &A, const Point &B, const Point &C)
     {
         points[0] = A; 
         points[1] = B; 
         points[2] = C;
     }
 
-    Track(Vector A, Vector B, Vector C)
+    Track(const Vector &A, const Vector &B, const Vector &C)
     {
         points[0] = makePoint(A);
         points[1] = makePoint(B);
@@ -75,6 +80,10 @@ struct Track
     }
 
     Point &operator[](const int index)
+    {   
+        return points[index];
+    }
+    const Point &operator[](const int index) const
     {   
         return points[index];
     }
@@ -89,8 +98,13 @@ struct Matrix{
     {
         return cols[index];
     }
+    
+    const Vector &operator[](const int index) const
+    {
+        return cols[index];
+    }
 
-    Matrix(Vector A, Vector B, Vector C) 
+    Matrix(const Vector &A, const Vector &B, const Vector &C) 
     { 
         cols[0] = A;
         cols[1] = B; 
@@ -111,7 +125,7 @@ Double_t degToRad(Double_t deg)
     return deg * pi/180;
 }
 
-Double_t dot(Vector v, Vector w)
+Double_t dot(const Vector &v, const Vector &w)
 {
     Double_t res = 0;
     for (int i = 0; i < 3; i++)
@@ -122,7 +136,7 @@ Double_t dot(Vector v, Vector w)
 }
 
 //return  AB dot CD
-Double_t dot(Point A, Point B, Point C, Point D)
+Double_t dot(const Point &A, const Point &B, const Point &C, const Point &D)
 {
     Vector v(A, B);
     Vector w(C ,D);
@@ -132,7 +146,7 @@ Double_t dot(Point A, Point B, Point C, Point D)
       + (B.z - A.z) * (D.z - C.z );*/
 }
 
-Double_t length(Vector v)
+Double_t length(const Vector &v)
 {
     Double_t len = 0;
     for (int i = 0; i < 3; i++)
@@ -142,7 +156,7 @@ Double_t length(Vector v)
     return sqrt(len);
 
 }
-Double_t length(Point A, Point B)
+Double_t length(const Point &A, const Point &B)
 {
     return length(Vector(A, B));
     /*return sqrt(pow(A.x - B.x, 2) 
@@ -150,14 +164,14 @@ Double_t length(Point A, Point B)
       + pow(A.z - B.z, 2));*/
 }
 
-Double_t getAngle(Vector A, Vector B)
+Double_t getAngle(const Vector &A, const Vector &B)
 {
     Double_t num = dot(A, B) / (length(A) * length(B)); 
     Double_t res = acos( num <= -1? -1 : num >= 1? 1 : num );
     return ((res < 0) ? res + 2*pi : res); //force angle to be positive
 }
 
-Double_t getAngle(Point top, Point mid, Point bot)
+Double_t getAngle(const Point &top, const Point &mid, const Point &bot)
 {
     //get the angle between three points such that 180 = colinear
     //use the middle as the origin
@@ -174,14 +188,14 @@ Double_t getAngle(Point top, Point mid, Point bot)
       */
 }
 
-Double_t getAngle(Track t)
+Double_t getAngle(const Track &t)
 {
     Double_t res = getAngle(t[0], t[1], t[2]);
     //std::cout << "angle: " << res << std::endl;
     return res;
 }
 
-Vector multiply(Double_t c, Vector v)
+Vector multiply(Double_t c, const Vector &v)
 {
     Vector res;
     for (int i = 0; i < 3; i++)
@@ -189,7 +203,7 @@ Vector multiply(Double_t c, Vector v)
     return res;
 }
 
-Matrix multiply (Double_t c, Matrix m)
+Matrix multiply (Double_t c, const Matrix &m)
 {
     Matrix res;
     for (int i = 0; i < 3; i++)
@@ -197,7 +211,7 @@ Matrix multiply (Double_t c, Matrix m)
     return res;
 }
 
-Vector multiply(Matrix m, Vector v)
+Vector multiply(const Matrix &m, const Vector &v)
 {
     Vector res;
     for (int i = 0; i < 3; i++)
@@ -210,7 +224,7 @@ Vector multiply(Matrix m, Vector v)
     return res;
 }
 
-Matrix multiply(Matrix A, Matrix B)
+Matrix multiply(const Matrix &A, const Matrix &B)
 {
     Matrix res;
     for (int i = 0; i < 3; i++)
@@ -224,7 +238,7 @@ Matrix multiply(Matrix A, Matrix B)
     return res;
 }
 
-Vector add(Vector v, Vector w)
+Vector add(const Vector &v, const Vector &w)
 {
     Vector res;
     for (int i = 0; i < 3; i++)
@@ -234,7 +248,7 @@ Vector add(Vector v, Vector w)
     return res;
 }
 
-Matrix add(Matrix A, Matrix B)
+Matrix add(const Matrix &A, const Matrix &B)
 {
     Matrix res;
     for (int i = 0; i < 3; i++)
@@ -247,7 +261,7 @@ Matrix add(Matrix A, Matrix B)
     return res;
 }
 //This is fine for 3x3 and 2x2 (small=true) matrices
-Double_t det(Matrix m, bool small=false)
+Double_t det(const Matrix &m, bool small=false)
 {
     if (small)
     {
@@ -302,7 +316,17 @@ Vector getTranslation(Double_t x, Double_t y, Double_t z)
     return v;
 }
 
-void printMatrix(Matrix m)
+Vector getXYSlope(const Point &A, const Point &B)
+{
+    Vector v;
+    v[0] = (A.x - B.x)/(A.z-B.z);
+    v[1] = (A.y - B.y)/(A.z-B.z);
+    v[2] = 1;
+    return v;
+}
+
+
+void printMatrix(const Matrix& m)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -314,10 +338,16 @@ void printMatrix(Matrix m)
     }
 }
 
-void printVector(Vector v)
+void printVector(const Vector& v)
 {
     for (int i = 0; i < 3; i++)
     {
         std::cout << v[i] << std::endl;
     }
 }
+
+void printPoint(const Point& p)
+{
+    std::cout << "(" << p.x << ", " << p.y << ", " << p.z << ")" << std::endl;
+}
+
