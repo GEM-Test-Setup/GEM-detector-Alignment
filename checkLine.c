@@ -1,27 +1,19 @@
 #include <iostream>
-#include "linalg.h"
+//#include "linalg.h"
 
 bool isSane(Point A, Point B, Point C)
-{
-    
-    return getAngle(A, B, C)-degToRad(180) < 0.01; //radians
+{    
+    Double_t angle = getAngle(A, B, C)-degToRad(180); //radians
+    //std::cout << "Angle: " << angle << std::endl;
+    return TMath::Abs(angle) < 0.001;
+}
+bool isSane(Track t)
+{    
+    return isSane(t[0], t[1], t[2]);
 }
 bool init = false;
 TMultiGraph *graph;
-void visualize(Point A, Point B, Point C)
-{
-    if (!init)
-    {
-        std::cerr << "Please use initVisualize to place detector planes" << std::endl;
-    }
-    TPolyLine3D *line = new TPolyLine3D(3);
-    line->SetNextPoint(A.x, A.y, A.z);
-    line->SetNextPoint(B.x, B.y, B.z);
-    line->SetNextPoint(C.x, C.y, C.z);
-    line->SetLineColor((rand() %47)+3);
-    line->DrawClone();
-}
-
+TCanvas *visCan = new TCanvas("3dvis", "Visualization");
 void initVisualize()
 {
 
@@ -30,9 +22,9 @@ void initVisualize()
     for (int i = 0; i < 3; i++)
     {
         planes[i] = new double[3];
-        planes[i][0] = -100 * i;      
-        planes[i][1] = 100;      
-        planes[i][2] = 100;      
+        planes[i][0] = 200 - 100 * i;      
+        planes[i][1] = 10;      
+        planes[i][2] = 10;      
     }
     initVisualize(planes);
 }
@@ -45,6 +37,7 @@ void initVisualize(double **planes)
 
 void initVisualize(Point origin, double **planes)
 {
+    visCan->cd();
     for (int i = 0; i < 3; i++)
     {
         double z = planes[i][0];
@@ -61,6 +54,28 @@ void initVisualize(Point origin, double **planes)
     }
     init = true;
 }
+
+void visualize(Point A, Point B, Point C)
+{
+    if (!init)
+    {
+        std::cout << "Initializing Visualize with assumed detector planes" << std::endl;
+        initVisualize();
+    }
+    visCan->cd();
+    TPolyLine3D *line = new TPolyLine3D(3);
+    line->SetNextPoint(A.x, A.y, A.z);
+    line->SetNextPoint(B.x, B.y, B.z);
+    line->SetNextPoint(C.x, C.y, C.z);
+    line->SetLineColor((rand() %47)+3);
+    line->DrawClone();
+}
+
+void visualize(Track t)
+{
+    visualize(t[0], t[1], t[2]);
+}
+
 
 void checkLine()
 {

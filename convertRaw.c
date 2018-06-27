@@ -66,7 +66,7 @@ std::vector< TH1D*>* getHists(int index)
     std::vector < TH1D* >* arr = new std::vector<TH1D*>;
     //std::cout << "check " << __LINE__ << std::endl; 
     //FIXME there has to be a better way of doing this 
-    //(I blame root hating arrays of TH1)
+    //(I blame root not liking arrays of TH1)
     arr->push_back((TH1D*)in.Get(concat("topX", index).c_str()));
     arr->push_back((TH1D*)in.Get(concat("topY", index).c_str()));
     arr->push_back((TH1D*)in.Get(concat("midX", index).c_str()));
@@ -165,13 +165,7 @@ void splitHists(std::vector <TH1D*>* hists)
     }
     std::cout << "3check " << __LINE__ << std::endl; 
     //validation complete. Begin splitting
-    if (nPeaks == 1) return;
-    //FIXME temp until tracks problem is sorted. TODO
-    std::cerr << "Skipping due to unfinished track combining code" << std::endl;
-    hists->clear();
-    return;
-    
-    
+    if (nPeaks == 1) return; 
     else if (nPeaks <= 0)
     {
         std::cerr << "Skipping due to no peaks found. anywhere." << std::endl;
@@ -207,7 +201,6 @@ void splitHists(std::vector <TH1D*>* hists)
             tHists.push_back(splitH);
         }
         //sort by pulse Height
-        //FIXME Can't tell the difference and properly correlate? Throw it out!
         tHists = sort(tHists);
         for (int j = 0; j < tHists.size();j++)
         {
@@ -215,19 +208,35 @@ void splitHists(std::vector <TH1D*>* hists)
         }
     }
     //Plots must be meaningfully correlated to justify recombining
-    //FIXME pulse heights are correlated in the same gem but not in top, mid, bot
-    //FIXME use geometry constraints
+    //pulse heights are correlated in the same gem but not across
     const Double_t sigLevel = 100;
     for (int j = 0; j < globHists[0].size(); j++)
     {
         for (int k = 0; k < 6; k++)
         {
-            if (blogHists[k].at(j))
+            if (TMath::Abs(scoreHist(globHists[k].at(j)) - scoreHist(globHists[k].at(j))) > sigLevel)
             {
+                std::cerr << "Skipping. X and Y don't correlate enough to justify resolving ambiguity" << std::endl;
+                hists->clear();
+                return;
+            }
+            else if (j < globHists[k].size()-1 && TMath::Abs(scoreHist(globHists[k].at(j)) - scoreHist(globHists[k].at(j+1))) < sigLevel)
+            {
+                std::cerr << "Skipping. Two hisograms in the same dimension are too close to justify resolving ambiguity" << std::endl;
+                std::cerr << "Hist 1: " << scoreHist(globHists[k].at(j)) << std::endl;
+                std::cerr << "Hist 2: " << scoreHist(globHists[k].at(j+1)) << std::endl;
                 
+                TCanvas *can = new TCanvas();
+                globHists[k].at(j)->DrawCopy();
+                TCanvas *can = new TCanvas();
+                globHists[k].at(j+1)->DrawCopy();
+                hists->clear();
+                return;
             }
         }
     }
+    hists->erase(hists->begin(), hists->begin()+nentries);
+    //Track matching will be taken care of later.
     for (int j = 0; j < globHists[0].size(); j++)
     {
         for (int k = 0; k < 6; k++)
@@ -235,9 +244,7 @@ void splitHists(std::vector <TH1D*>* hists)
             hists->push_back(globHists[k].at(j));
         }
     }
-    hists->erase(hists->begin(), hists->begin()+nentries);
     std::cout << "check " << __LINE__ << std::endl;
-
 }
 
 
@@ -324,7 +331,6 @@ void makeTestData()
     
     TFile* rawFile = new TFile("raw_gem.root", "RECREATE"); 
     
-    //FIXME eventually use peak height to distinguish between two events
     //Split and create n tracks for n peaks, only leaving in relevant parts
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
     
@@ -348,12 +354,18 @@ void makeTestData()
     means[0] = 1;
     means[1] = 8;
     getRandHist(means, ampl, 2, "topY0")->Write();
+    
+    ampl[0] = 1.2;
+    ampl[1] = 0.8;
     means[0] = 2;
     means[1] = 7;
     getRandHist(means, ampl, 2, "midX0")->Write();
     means[0] = 2;
     means[1] = 7;
     getRandHist(means, ampl, 2, "midY0")->Write();
+    
+    ampl[0] = 0.8;
+    ampl[1] = 1.2;
     means[0] = 3; 
     means[1] = 6;
     getRandHist(means, ampl, 2, "botX0")->Write();
@@ -370,7 +382,7 @@ void makeTestData()
 void convertRaw()
 {
     gROOT->ProcessLine(".L linalg.h+");
-    //gROOT->ProcessLine(".L checkLine.c");
+    gROOT->ProcessLine(".L checkLine.c");
 
     std::cout << "Number of bins: " << nbins << std::endl;
     makeTestData();
@@ -408,14 +420,18 @@ void convertRaw()
     }
     TTree* res = new TTree("T", "Contains corrected particle tracks");
 
-    Track *t;
-    res->Branch("tracks", "Track", &t);
+    Track *tr;
+    res->Branch("tracks", "Track", &tr);
     const int nentries = 1;
     for (int j = 0; j < nentries; j++)
     {
         std::vector< TH1D* >* raw = getHists(j);
         splitHists(raw);
         std::cout << "raw size" << raw->size() << std::endl;
+        std::vector< Point > topPoints;
+        std::vector< Point > midPoints;
+        std::vector< Point > botPoints;
+        
         for (int k = 0; k < raw->size()/6; k++)
         {
             Double_t x[3], y[3], z[3];
@@ -438,10 +454,43 @@ void convertRaw()
             Point A(x[0],y[0],z[0]);
             Point B(x[1],y[1],z[1]);
             Point C(x[2],y[2],z[2]);
-
-            t = new Track(A, B, C); 
-
-            res->Fill();
+            topPoints.push_back(A);
+            midPoints.push_back(B);
+            botPoints.push_back(C);
+        }
+               
+        for (int t = 0; t < topPoints.size(); t++)
+        {
+            std::vector <Track> options;
+            for (int m = 0; m < midPoints.size(); m++)
+            {
+                for (int b = 0; b < botPoints.size(); b++)
+                {
+                    Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
+                    if (isSane(check))
+                    {
+                        options.push_back(check);
+                    }
+                }
+            }
+            if (options.size() == 1)
+            {
+                visualize(options.at(0)[0], options.at(0)[1], options.at(0)[2]);
+                tr = new Track(options.at(0)[0], options.at(0)[1], options.at(0)[2]); 
+                res->Fill();
+            }
+            else
+            { 
+                if (options.size() > 1)
+                {
+                    std::cerr << "Too many valid track configurations." << std::endl;   
+                }
+                else
+                {
+                    std::cerr << "Too few valid track configurations" << std::endl;
+                }
+                break;
+            }
         }
     } 
     TFile out("tracks.root", "RECREATE");
