@@ -16,6 +16,7 @@ const int maxX = 10;
 TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
 //TF1* gaus = new TF1("mygaus", "gaus", minX, maxX);
 TFile in("raw_gem.root");
+bool noOffsets = false;
 
 std::string concat(std::string str, int index)
 {
@@ -140,6 +141,12 @@ bool histSort(const TH1D* left, const TH1D* right)
 const double peakSigma = 18;
 void splitHists(std::vector <TH1D*>* hists)
 {
+    if (noOffsets)
+    {
+        std::cout << "Histogram splitting not possible without offsets" << std::endl;
+        hists->clear();
+        return;
+    }
     if (hists->size() <= 0)
     {
         std::cerr << "Invalid histogram size" << std::endl;
@@ -379,8 +386,9 @@ void makeTestData()
     std::cout << "generated " << __LINE__ << std::endl;
 }
 
-void convertRaw()
+void convertRaw(bool skipOffsets=true)
 {
+    noOffsets = skipOffsets;
     gROOT->ProcessLine(".L linalg.h+");
     gROOT->ProcessLine(".L checkLine.c");
 
@@ -388,35 +396,38 @@ void convertRaw()
     makeTestData();
     //convert shower into x, y, z
     //take RAW GEM X,Y,Z and turn it into real X, Y, Z by fitting distribution into reality
-    TFile conf("offsets.root");
-    TTree* treeConf = (TTree*)conf.Get("T");   
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
-    Double_t txRot=0, tyRot=0, tzRot=0, txTrans=0, tyTrans=0, tzTrans=0;
-
-    treeConf->SetBranchAddress("gems.xTrans", &txTrans);
-    treeConf->SetBranchAddress("gems.yTrans", &tyTrans);
-    treeConf->SetBranchAddress("gems.zTrans", &tzTrans);
-    treeConf->SetBranchAddress("gems.xRot", &txRot);
-    treeConf->SetBranchAddress("gems.yRot", &tyRot);
-    treeConf->SetBranchAddress("gems.zRot", &tzRot);
-
-    if (treeConf->GetEntries() != 3)
+    if (!noOffsets)
     {
-        std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
-        exit(0);
-    }
-    std::cout << "check " << __LINE__ << std::endl;
-    for (int i = 0; i < treeConf->GetEntries(); i++)
-    {
-        treeConf->GetEntry(i);
-        xRot[i] = txRot;      
-        yRot[i] = tyRot;      
-        zRot[i] = tzRot;      
-        xTrans[i] = txTrans;      
-        yTrans[i] = tyTrans;      
-        zTrans[i] = tzTrans;
+        TFile conf("offsets.root");
+        TTree* treeConf = (TTree*)conf.Get("T");   
+        Double_t txRot=0, tyRot=0, tzRot=0, txTrans=0, tyTrans=0, tzTrans=0;
 
-        std::cout << "zTrans" << zTrans[i] << std::endl;
+        treeConf->SetBranchAddress("gems.xTrans", &txTrans);
+        treeConf->SetBranchAddress("gems.yTrans", &tyTrans);
+        treeConf->SetBranchAddress("gems.zTrans", &tzTrans);
+        treeConf->SetBranchAddress("gems.xRot", &txRot);
+        treeConf->SetBranchAddress("gems.yRot", &tyRot);
+        treeConf->SetBranchAddress("gems.zRot", &tzRot);
+
+        if (treeConf->GetEntries() != 3)
+        {
+            std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
+            exit(0);
+        }
+        std::cout << "check " << __LINE__ << std::endl;
+        for (int i = 0; i < treeConf->GetEntries(); i++)
+        {
+            treeConf->GetEntry(i);
+            xRot[i] = txRot;      
+            yRot[i] = tyRot;      
+            zRot[i] = tzRot;      
+            xTrans[i] = txTrans;      
+            yTrans[i] = tyTrans;      
+            zTrans[i] = tzTrans;
+
+            std::cout << "zTrans" << zTrans[i] << std::endl;
+        }
     }
     TTree* res = new TTree("T", "Contains corrected particle tracks");
 
@@ -431,7 +442,7 @@ void convertRaw()
         std::vector< Point > topPoints;
         std::vector< Point > midPoints;
         std::vector< Point > botPoints;
-        
+
         for (int k = 0; k < raw->size()/6; k++)
         {
             Double_t x[3], y[3], z[3];
@@ -458,7 +469,7 @@ void convertRaw()
             midPoints.push_back(B);
             botPoints.push_back(C);
         }
-               
+
         for (int t = 0; t < topPoints.size(); t++)
         {
             std::vector <Track> options;
@@ -467,7 +478,7 @@ void convertRaw()
                 for (int b = 0; b < botPoints.size(); b++)
                 {
                     Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
-                    if (isSane(check))
+                    if (noOffsets || isSane(check))
                     {
                         options.push_back(check);
                     }
@@ -496,6 +507,7 @@ void convertRaw()
     TFile out("tracks.root", "RECREATE");
     res->Write();
     out.Close();
-    conf.Close();
+    if (!noOffsets)
+        conf.Close();
     in.Close();
 }
