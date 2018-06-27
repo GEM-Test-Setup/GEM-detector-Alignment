@@ -86,8 +86,11 @@ void fcn(Int_t& npar, Double_t *gin, Double_t& f, Double_t* par, Int_t flag)
         for (int i = 0; i < 2; i++)
         {
             vec[i] = current[i+1];
+            //Take rotations as if gem has z=0. 
+            Double_t ztemp = vec[i][2];
+            vec[i][2] = 0;
             vec[i] = multiply(getRotation(par[3+6*i], par[4+6*i], par[5+6*i]), vec[i]);
-            vec[i] = add(vec[i], getTranslation(par[0+6*i], par[1+6*i], par[2+6*i]));
+            vec[i] = add(vec[i], getTranslation(par[0+6*i], par[1+6*i], par[2+6*i]+ztemp));
         }
         Track* translated = new Track(current[0], vec[0], vec[1]);
         //f += getChi2(*translated);
