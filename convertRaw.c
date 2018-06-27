@@ -65,7 +65,6 @@ TH1D* getRandHist(const double* meanArr, const double* amplArr, int len, std::st
 std::vector< TH1D*>* getHists(int index)
 {
     std::vector < TH1D* >* arr = new std::vector<TH1D*>;
-    //std::cout << "check " << __LINE__ << std::endl; 
     //FIXME there has to be a better way of doing this 
     //(I blame root not liking arrays of TH1)
     arr->push_back((TH1D*)in.Get(concat("topX", index).c_str()));
@@ -141,19 +140,12 @@ bool histSort(const TH1D* left, const TH1D* right)
 const double peakSigma = 18;
 void splitHists(std::vector <TH1D*>* hists)
 {
-    if (noOffsets)
-    {
-        std::cout << "Histogram splitting not possible without offsets" << std::endl;
-        hists->clear();
-        return;
-    }
     if (hists->size() <= 0)
     {
         std::cerr << "Invalid histogram size" << std::endl;
         return;
     }
     
-    std::cout << "check " << __LINE__ << std::endl;
     int nPeaks = hists->at(0)->ShowPeaks(peakSigma, "goff", 0.4);
     int nentries = hists->size();
     for (int i = 0; i < nentries; i++)
@@ -170,7 +162,6 @@ void splitHists(std::vector <TH1D*>* hists)
             return;
         }
     }
-    std::cout << "3check " << __LINE__ << std::endl; 
     //validation complete. Begin splitting
     if (nPeaks == 1) return; 
     else if (nPeaks <= 0)
@@ -179,21 +170,23 @@ void splitHists(std::vector <TH1D*>* hists)
         hists->clear();
         return;
     }
-    std::cout << "4check " << __LINE__ << std::endl;
+    if (noOffsets)
+    {
+        std::cout << "Histogram splitting not possible without offsets" << std::endl;
+        hists->clear();
+        return;
+    }
     std::vector< TH1D* > globHists[nentries];
     for (int i = 0; i < nentries; i++)
     {
         int last = 0;
-        std::cout << "n check " << nentries << std::endl;
         std::vector< TH1D* > tHists;
-        std::cout << "6check " << __LINE__ << std::endl;
         TList *functions = hists->at(i)->GetListOfFunctions();
         TPolyMarker *peaks = (TPolyMarker*)functions->FindObject("TPolyMarker");
         for (int j = 0; j < nPeaks; j++)
         {
             std::string del = "_split_";
             TH1D* splitH = new TH1D(concat(hists->at(i)->GetName(), concat(del, j).c_str()).c_str(), "Contains a gaussian (split)", nbins, minX, maxX);
-            std::cout << "7check " << __LINE__ << std::endl;
 
             Double_t splitX = ((nPeaks-1 == j)? max : (peaks->GetX()[j] + peaks->GetX()[j+1])/2.0 );
             int splitBin = hists->at(i)->GetXaxis()->FindBin(splitX);
@@ -251,7 +244,6 @@ void splitHists(std::vector <TH1D*>* hists)
             hists->push_back(globHists[k].at(j));
         }
     }
-    std::cout << "check " << __LINE__ << std::endl;
 }
 
 
@@ -342,13 +334,13 @@ void makeTestData()
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
     
     //FIXME this sucks but it works
-    /*getRandHist(1, "topX0")->Write();
-    getRandHist(4, "topY0")->Write();
-    getRandHist(2, "midX0")->Write();
-    getRandHist(5, "midY0")->Write();
-    getRandHist(3, "botX0")->Write();
-    getRandHist(6, "botY0")->Write(); 
-    */
+    getRandHist(1, "topX1")->Write();
+    getRandHist(4, "topY1")->Write();
+    getRandHist(2, "midX1")->Write();
+    getRandHist(5, "midY1")->Write();
+    getRandHist(3, "botX1")->Write();
+    getRandHist(6, "botY1")->Write(); 
+    
     double* means = new double[2];
     double* ampl = new double[2];
     
@@ -415,7 +407,6 @@ void convertRaw(bool skipOffsets=true)
             std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
             exit(0);
         }
-        std::cout << "check " << __LINE__ << std::endl;
         for (int i = 0; i < treeConf->GetEntries(); i++)
         {
             treeConf->GetEntry(i);
@@ -433,7 +424,7 @@ void convertRaw(bool skipOffsets=true)
 
     Track *tr;
     res->Branch("tracks", "Track", &tr);
-    const int nentries = 1;
+    const int nentries = 2;
     for (int j = 0; j < nentries; j++)
     {
         std::vector< TH1D* >* raw = getHists(j);
@@ -450,7 +441,7 @@ void convertRaw(bool skipOffsets=true)
             {     
                 x[i] = getCenter(raw->at(6*k+2*i));
                 y[i] = getCenter(raw->at(6*k+2*i+1));
-                z[i] = 200 - i*100;
+                z[i] = 0;//200 - i*100;
                 std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
                 Vector v(x[i], y[i], z[i]);
                 //Vector v(1, 2, 3);
@@ -458,9 +449,9 @@ void convertRaw(bool skipOffsets=true)
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
                 x[i] = v[0];
                 y[i] = v[1];
-                z[i] = v[2];
+                z[i] = v[2] + 200 - i*100;
+                std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
             }
-            // std::cout << "check " << __LINE__ << std::endl;
 
             Point A(x[0],y[0],z[0]);
             Point B(x[1],y[1],z[1]);
