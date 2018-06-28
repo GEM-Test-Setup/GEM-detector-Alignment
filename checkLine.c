@@ -76,6 +76,12 @@ void visualize(Track t)
     visualize(t[0], t[1], t[2]);
 }
 
+void clearVis()
+{
+    visCan->Clear();
+    init = false;   
+}
+
 
 void checkLine()
 {

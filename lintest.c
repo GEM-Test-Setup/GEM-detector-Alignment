@@ -137,9 +137,10 @@ void visXTransTest()
 
 void lintest()
 {
-    //visXRotTest();
-    //visYRotTest();
-    //visZRotTest();
+    visXRotTest();
+    visYRotTest();
+    visZRotTest();
+    clearVis();
     visXTransTest();
 
     Vector v;//= getTranslation(1, 2, 3);    

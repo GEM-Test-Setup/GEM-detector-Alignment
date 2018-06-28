@@ -11,8 +11,8 @@
 const Double_t resolution = (10.0/256.0)/sqrt(12.0);
 const int nbins = (int)(10.0/resolution);
 //const int nbins = 256;
-const int minX = 0;
-const int maxX = 10;
+const int minX = -5;
+const int maxX = 5;
 TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
 //TF1* gaus = new TF1("mygaus", "gaus", minX, maxX);
 TFile in("raw_gem.root");
@@ -334,12 +334,12 @@ void makeTestData()
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
     
     //FIXME this sucks but it works
-    getRandHist(1, "topX1")->Write();
-    getRandHist(4, "topY1")->Write();
-    getRandHist(2, "midX1")->Write();
-    getRandHist(5, "midY1")->Write();
-    getRandHist(3, "botX1")->Write();
-    getRandHist(6, "botY1")->Write(); 
+    getRandHist(-4, "topX1")->Write();
+    getRandHist(-1, "topY1")->Write();
+    getRandHist(-3, "midX1")->Write();
+    getRandHist(0, "midY1")->Write();
+    getRandHist(-2, "botX1")->Write();
+    getRandHist(1, "botY1")->Write(); 
     
     double* means = new double[2];
     double* ampl = new double[2];
@@ -347,29 +347,29 @@ void makeTestData()
     ampl[0] = 0.8;
     ampl[1] = 1.2;
     
-    means[0] = 1;
-    means[1] = 8;
+    means[0] = 0;
+    means[1] = 3;
     getRandHist(means, ampl, 2, "topX0")->Write();
-    means[0] = 1;
-    means[1] = 8;
+    means[0] = 0;
+    means[1] = 3;
     getRandHist(means, ampl, 2, "topY0")->Write();
     
     ampl[0] = 1.2;
     ampl[1] = 0.8;
-    means[0] = 2;
-    means[1] = 7;
+    means[0] = 1;
+    means[1] = 4;
     getRandHist(means, ampl, 2, "midX0")->Write();
-    means[0] = 2;
-    means[1] = 7;
+    means[0] = 1;
+    means[1] = 4;
     getRandHist(means, ampl, 2, "midY0")->Write();
     
     ampl[0] = 0.8;
     ampl[1] = 1.2;
-    means[0] = 3; 
-    means[1] = 6;
+    means[0] = 2; 
+    means[1] = 5;
     getRandHist(means, ampl, 2, "botX0")->Write();
-    means[0] = 3;
-    means[1] = 6;
+    means[0] = 2;
+    means[1] = 5;
     getRandHist(means, ampl, 2, "botY0")->Write(); 
     
     rawFile->Close();
@@ -378,7 +378,7 @@ void makeTestData()
     std::cout << "generated " << __LINE__ << std::endl;
 }
 
-void convertRaw(bool skipOffsets=true)
+void convertRaw(bool skipOffsets=false)
 {
     noOffsets = skipOffsets;
     gROOT->ProcessLine(".L linalg.h+");
