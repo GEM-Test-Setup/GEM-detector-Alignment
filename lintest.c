@@ -1,7 +1,147 @@
 #include "linalg.h"
 
+void visIdentityTest()
+{
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "Identity" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(3, 3, 0);
+    visualize(A, B, C);
+    Vector vC = Vector(C);
+    vC = multiply(getRotation(0,0,0), vC);
+    vC = add(getTranslation(0,0,0), vC);
+    Point D = makePoint(vC);
+    visualize(A, B, D);
+}
+
+void visZRotTest()
+{
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "Z Rot 180" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(3, 3, 0);
+    visualize(A, B, C);
+    Vector vA = Vector(A);
+    vA = multiply(getRotation(0,0, degToRad(180)), vA);
+    vA = add(getTranslation(0,0,0), vA);
+    Point D = makePoint(vA);
+    Vector vB = Vector(B);
+    vB = multiply(getRotation(0,0,degToRad(180)), vB);
+    vB = add(getTranslation(0,0,0), vB);
+    Point E = makePoint(vB);
+    Vector vC = Vector(C);
+    vC = multiply(getRotation(0,0,degToRad(180)), vC);
+    vC = add(getTranslation(0,0,0), vC);
+    Point F = makePoint(vC);
+    visualize(D, E, F);
+}
+
+void visXRotTest()
+{
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "X Rot 180" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(3, 3, 0);
+    visualize(A, B, C);
+    
+    Vector vA = Vector(A);
+    Double_t zTemp;
+    zTemp = vA[2];
+    vA[2] = 0;
+    vA = multiply(getRotation(degToRad(180),0,0), vA);
+    vA = add(getTranslation(0,0,zTemp), vA);
+    Point D = makePoint(vA);
+    
+    Vector vB = Vector(B);
+    zTemp = vB[2];
+    vB[2] = 0;
+    vB = multiply(getRotation(degToRad(180),0,0), vB);
+    vB = add(getTranslation(0,0,zTemp), vB);
+    Point E = makePoint(vB);
+    
+    Vector vC = Vector(C);
+    zTemp = vC[2];
+    vC[2] = 0;
+    vC = multiply(getRotation(degToRad(180),0,0), vC);
+    vC = add(getTranslation(0,0,zTemp), vC);
+    Point F = makePoint(vC);
+    visualize(D, E, F);
+}
+
+void visYRotTest()
+{
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "Y Rot 180" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(3, 3, 0);
+    visualize(A, B, C);
+    
+    Vector vA = Vector(A);
+    Double_t zTemp;
+    zTemp = vA[2];
+    vA[2] = 0;
+    vA = multiply(getRotation(0,degToRad(180),0), vA);
+    vA = add(getTranslation(0,0,zTemp), vA);
+    Point D = makePoint(vA);
+    
+    Vector vB = Vector(B);
+    zTemp = vB[2];
+    vB[2] = 0;
+    vB = multiply(getRotation(0,degToRad(180),0), vB);
+    vB = add(getTranslation(0,0,zTemp), vB);
+    Point E = makePoint(vB);
+    
+    Vector vC = Vector(C);
+    zTemp = vC[2];
+    vC[2] = 0;
+    vC = multiply(getRotation(0,degToRad(180),0), vC);
+    vC = add(getTranslation(0,0,zTemp), vC);
+    Point F = makePoint(vC);
+    visualize(D, E, F);
+}
+
+void visXTransTest()
+{
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "X Trans" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(3, 3, 0);
+    visualize(A, B, C);
+    
+    Vector vA = Vector(A);
+    vA = multiply(getRotation(0,0,0), vA);
+    vA = add(getTranslation(4,4,5), vA);
+    Point D = makePoint(vA);
+    
+    Vector vB = Vector(B);
+    vB = multiply(getRotation(0,0,0), vB);
+    vB = add(getTranslation(3,3,0), vB);
+    Point E = makePoint(vB);
+    
+    Vector vC = Vector(C);
+    vC = multiply(getRotation(0,0,0), vC);
+    vC = add(getTranslation(2,2,-5), vC);
+    Point F = makePoint(vC);
+    visualize(D, E, F);
+}
+
 void lintest()
 {
+    //visXRotTest();
+    //visYRotTest();
+    //visZRotTest();
+    visXTransTest();
+
     Vector v;//= getTranslation(1, 2, 3);    
     printVector(v);
     Vector w = getTranslation(2, 3, 4);
@@ -49,12 +189,6 @@ void lintest()
     std::cout << "Printing identity by 0 rot" << std::endl;
     Matrix m = getRotation(0,0,0);
     printMatrix(m);
-    //std::cout << "angle: " << getAngle(a, b, c) << std::endl;
     
-
-    /*Vector a, b;
-    a = getTranslation(-1, 0, 0);
-    b = getTranslation(0, 1, 1);
-    std::cout << "angle: " << getAngle(a,b) << std::endl; 
-    */
+    
 }

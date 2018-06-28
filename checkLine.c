@@ -31,7 +31,7 @@ void initVisualize()
 
 void initVisualize(double **planes)
 {
-    Point o;
+    Point o(-5, -5, 0);
     initVisualize(o, planes);
 }
 
