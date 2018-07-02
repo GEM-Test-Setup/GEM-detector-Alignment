@@ -345,7 +345,6 @@ bool isWithinUncert(const Track& t)
     Double_t ySlope = (t[2].y-t[0].y) / (t[2].z-t[0].z);
     Double_t eX = t[0].x + xSlope * (t[1].z-t[0].z);
     Double_t eY = t[0].y + ySlope * (t[1].z-t[0].z);
-    std::cout << eX << " " << eY << " " << t[1].x << " " << t[1].y << std::endl;
     Double_t res = getDist(t[1].x, t[1].y, eX, eY);
     Double_t xOff = t[1].dx  
         + (t[0].dx * ((t[2].z-t[1].z)/zLen)) 
@@ -353,9 +352,8 @@ bool isWithinUncert(const Track& t)
     Double_t yOff = t[1].dy 
         + (t[0].dy * ((t[2].z-t[1].z)/zLen)) 
         + (t[2].dy * ((t[1].z-t[0].z)/zLen));
-    std::cout << xOff << " " << yOff << " " << eX << " " << eY << std::endl;
     Double_t uRes = getDist(0, 0, xOff, yOff);
-    std::cout << "Residiaul: " << res << " within uncert: " << uRes << std::endl;
+    //std::cout << "Residiaul: " << res << " within uncert: " << uRes << std::endl;
     return res < uRes;
     //return true;
 }
