@@ -337,22 +337,24 @@ Double_t getDist(Double_t x, Double_t y, Double_t x1, Double_t y1)
 
 bool isWithinUncert(const Track& t)
 {
-    //TODO use a better method?
+    //TODO use a better method? Include z uncertainty?
     //Assume A and C and correct, fit B to it and use residiuals
-    Double_t zLen = abs(t[0].z - t[2].z);
+    Double_t zLen = t[2].z - t[0].z;
     //Expected x and y
     Double_t xSlope = (t[2].x-t[0].x) / (t[2].z-t[0].z);
     Double_t ySlope = (t[2].y-t[0].y) / (t[2].z-t[0].z);
-    Double_t eX = t[2].x + xSlope * t[2].z-t[1].z;
-    Double_t eY = t[2].y + ySlope * t[2].z-t[1].z;
+    Double_t eX = t[0].x + xSlope * (t[1].z-t[0].z);
+    Double_t eY = t[0].y + ySlope * (t[1].z-t[0].z);
+    std::cout << eX << " " << eY << " " << t[1].x << " " << t[1].y << std::endl;
     Double_t res = getDist(t[1].x, t[1].y, eX, eY);
-    Double_t xOff = t[1].dx 
-        + ((t[0].x) * ((t[2].z-t[1].z)/zLen)) 
-        + ((t[1].x) * ((t[1].z-t[0].z)/zLen));
+    Double_t xOff = t[1].dx  
+        + (t[0].dx * ((t[2].z-t[1].z)/zLen)) 
+        + (t[2].dx * ((t[1].z-t[0].z)/zLen));
     Double_t yOff = t[1].dy 
-        + ((t[0].y) * ((t[2].z-t[1].z)/zLen)) 
-        + ((t[1].y) * ((t[1].z-t[0].z)/zLen));
-    Double_t uRes = getDist(eX, eY, xOff, yOff);
+        + (t[0].dy * ((t[2].z-t[1].z)/zLen)) 
+        + (t[2].dy * ((t[1].z-t[0].z)/zLen));
+    std::cout << xOff << " " << yOff << " " << eX << " " << eY << std::endl;
+    Double_t uRes = getDist(0, 0, xOff, yOff);
     std::cout << "Residiaul: " << res << " within uncert: " << uRes << std::endl;
     return res < uRes;
     //return true;

@@ -69,6 +69,31 @@ void visualize(Point A, Point B, Point C)
     line->SetNextPoint(C.x, C.y, C.z);
     line->SetLineColor((rand() %47)+3);
     line->DrawClone();
+    for (int i = 0; i < 3; i++)
+    {
+        Point *p;
+        if ( i == 0)
+            p = A;
+        else if (i == 1)
+            p = B;
+        else
+            p = C;
+        line = new TPolyLine3D(2);
+        line->SetNextPoint(p->x+p->dx, p->y, p->z);
+        line->SetNextPoint(p->x-p->dx, p->y, p->z);
+        line->SetLineColor(2);
+        line->DrawClone();
+        line = new TPolyLine3D(2);
+        line->SetNextPoint(p->x, p->y+p->dy, p->z);
+        line->SetNextPoint(p->x, p->y-p->dy, p->z);
+        line->SetLineColor(2);
+        line->DrawClone();
+        line = new TPolyLine3D(2);
+        line->SetNextPoint(p->x, p->y, p->z+p->dz);
+        line->SetNextPoint(p->x, p->y, p->z-p->dz);
+        line->SetLineColor(2);
+        line->DrawClone();
+    }
 }
 
 void visualize(Track t)

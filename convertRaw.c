@@ -8,9 +8,15 @@
 #include <sstream>
 #include <cmath>
 
-const Double_t resolution = (10.0/256.0)/sqrt(12.0);
-const int nbins = (int)(10.0/resolution);
-//const int nbins = 256;
+//const Double_t resolution = (10.0/256.0)/sqrt(12.0);
+
+//dQ uncertainty in a channel (assumed the same for every channel)
+//Result value ranges from 0-2^16 (16 bit), QDC dependent
+const Double_t dQ = 2;
+//TODO Propagate dQ based on specifications (Volts per channel?)
+//const Double_t dQ = 10000/(pow(2,16));
+
+const int nbins = 256;
 const int minX = -5;
 const int maxX = 5;
 TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
@@ -36,11 +42,11 @@ std::string concat(const char* str1, const char* str2)
 TH1D* getRandHist(double mean, std::string name)
 { 
     gaus->SetParameters(1, mean, .3); //amplitude, xmean, xsigma
-    TH1D* raw = new TH1D(name.c_str(), "Contains a Gaussian", nbins, minX, maxX);
+    TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussian + Noise", nbins, minX, maxX);
     raw->FillRandom("mygaus", 100000);
     for (int j = 0; j < raw->GetSize(); j++)
     {
-        raw->AddBinContent(j, rand()%50); 
+        raw->AddBinContent(j, rand()%100); 
     }
     return raw;
 }
@@ -262,7 +268,7 @@ Double_t center = gaus->GetParameter(1);
 return center;
 }*/
 
-Double_t getCenter(TH1D* hist)
+Double_t getCenter(TH1D* hist, Double_t &uncert)
 {
     //Cut anything less that the edges to ensure a non-biased fit
     const int avgNum = 5;
@@ -285,18 +291,36 @@ Double_t getCenter(TH1D* hist)
             hist->SetBinContent(k, 0);    
         }
     }
+    //These values are squared
+    Double_t dWeightedIntegral = 0;
+    Double_t dIntegral = 0;
 
-    //Use charge-weighted integral divided by integral to find charged weighted center
-    Double_t wIntegral = 0;;
+    //Use charge-weighted integral divided by integral to find centroid 
+    Double_t wIntegral = 0;
+    Double_t Integral = 0;
     for (int k = 0; k <= hist->GetSize(); k++)
     {
         wIntegral += k*hist->GetBinContent(k);
+        Integral += hist->GetBinContent(k);   
+        //uncertainty in bin content is dQ
+        dWeightedIntegral += pow(k*dQ,2);
+        dIntegral += pow(dQ,2);
     }
-    Double_t binIndex = wIntegral / hist->Integral(1, hist->GetSize()-2);
+    //Propagate uncertainty in measurement
+    //dWeighted and dIntegral are both already squared
+    Double_t binIndex = wIntegral / Integral;
+    Double_t dBinIndex = sqrt(dWeightedIntegral/(pow(wIntegral,2)) +
+            dIntegral/pow(Integral,2)) * binIndex;
+    
+
     TCanvas *c = new TCanvas();
     hist->DrawCopy();
-    return hist->GetXaxis()->GetBinCenter((int)binIndex);
-
+    Double_t up = hist->GetXaxis()->GetBinUpEdge((int)binIndex);
+    Double_t low = hist->GetXaxis()->GetBinLowEdge((int)binIndex);
+    //convert dBinIndex into x
+    uncert = dBinIndex * (up-low);
+    //lower x bound + fractionalpart * binDelta
+    return low + ((binIndex-((int)binIndex)) * (up-low));
 }
 void makeTestData()
 {
@@ -334,12 +358,12 @@ void makeTestData()
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
     
     //FIXME this sucks but it works
-    getRandHist(-4, "topX1")->Write();
-    getRandHist(-1, "topY1")->Write();
-    getRandHist(-3, "midX1")->Write();
-    getRandHist(0, "midY1")->Write();
-    getRandHist(-2, "botX1")->Write();
-    getRandHist(1, "botY1")->Write(); 
+    getRandHist(-2, "topX1")->Write();
+    getRandHist(0, "topY1")->Write();
+    getRandHist(-1, "midX1")->Write();
+    getRandHist(1, "midY1")->Write();
+    getRandHist(0, "botX1")->Write();
+    getRandHist(2, "botY1")->Write(); 
     
     double* means = new double[2];
     double* ampl = new double[2];
@@ -347,29 +371,29 @@ void makeTestData()
     ampl[0] = 0.8;
     ampl[1] = 1.2;
     
-    means[0] = 0;
-    means[1] = 3;
+    means[0] = -2;
+    means[1] = 4;
     getRandHist(means, ampl, 2, "topX0")->Write();
     means[0] = 0;
-    means[1] = 3;
+    means[1] = 4;
     getRandHist(means, ampl, 2, "topY0")->Write();
     
-    ampl[0] = 1.2;
-    ampl[1] = 0.8;
-    means[0] = 1;
-    means[1] = 4;
+    ampl[0] = 0.8;
+    ampl[1] = 1.2;
+    means[0] = -3;
+    means[1] = 3;
     getRandHist(means, ampl, 2, "midX0")->Write();
-    means[0] = 1;
+    means[0] = 0;
     means[1] = 4;
     getRandHist(means, ampl, 2, "midY0")->Write();
     
     ampl[0] = 0.8;
     ampl[1] = 1.2;
-    means[0] = 2; 
-    means[1] = 5;
+    means[0] = -4; 
+    means[1] = 2;
     getRandHist(means, ampl, 2, "botX0")->Write();
-    means[0] = 2;
-    means[1] = 5;
+    means[0] = 0;
+    means[1] = 4;
     getRandHist(means, ampl, 2, "botY0")->Write(); 
     
     rawFile->Close();
@@ -437,25 +461,38 @@ void convertRaw(bool skipOffsets=false)
         for (int k = 0; k < raw->size()/6; k++)
         {
             Double_t x[3], y[3], z[3];
+            Vector uncert[3];
             for (int i = 0; i < 3; i++)
             {     
-                x[i] = getCenter(raw->at(6*k+2*i));
-                y[i] = getCenter(raw->at(6*k+2*i+1));
+
+                Double_t ux, uy, uz;
+                x[i] = getCenter(raw->at(6*k+2*i), ux);
+                y[i] = getCenter(raw->at(6*k+2*i+1), uy);
                 z[i] = 0;//200 - i*100;
-                std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
+                uz = 0.1;
+                uncert[i][0] = ux;
+                uncert[i][1] = uy;
+                uncert[i][2] = uz;
+                std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
                 Vector v(x[i], y[i], z[i]);
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
+                //FIXME assume uncertainty is invariant under above transformations
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;
                 std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
             }
 
-            Point A(x[0],y[0],z[0]);
-            Point B(x[1],y[1],z[1]);
-            Point C(x[2],y[2],z[2]);
+            Point A(x[0],y[0],z[0], uncert[0][0], uncert[0][1], uncert[0][2]);
+            Point B(x[1],y[1],z[1], uncert[1][0], uncert[1][1], uncert[1][2]);
+            Point C(x[2],y[2],z[2], uncert[2][0], uncert[2][1], uncert[2][2]);
+            printPoint(A); 
+            printPoint(B); 
+            printPoint(C); 
+            
+            
             topPoints.push_back(A);
             midPoints.push_back(B);
             botPoints.push_back(C);
@@ -469,12 +506,13 @@ void convertRaw(bool skipOffsets=false)
                 for (int b = 0; b < botPoints.size(); b++)
                 {
                     Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
-                    if (noOffsets || isSane(check))
+                    if (noOffsets || isWithinUncert(check))
                     {
                         options.push_back(check);
                     }
                 }
             }
+            std::cout << "options size: " << options.size() << std::endl;
             if (options.size() == 1)
             {
                 visualize(options.at(0)[0], options.at(0)[1], options.at(0)[2]);
