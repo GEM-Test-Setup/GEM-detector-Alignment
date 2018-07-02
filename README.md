@@ -31,13 +31,13 @@ Converts histograms (x: adc channel y: signal) into tracks. option skipOffset sk
     * writes these tracks to file and visualizes them using checkLine.c
 # checkLine.c
 Used for 3d track visualization
-  *initVisualize
+  * initVisualize
     * sets up the graph and draws the gem planes
     * initVisualize()
       * Uses default planes and range z = 0, 100, 200, range = (-5, 5)
-    *initVisualize(** double)
+    * initVisualize(** double)
       * takes array of 3 planes where [][0] is z, [][1] is length, and [][2] is width
-    *initVisualize(Point, ** double)
+    * initVisualize(Point, ** double)
       * takes origin point. all planes offset by this value
       * takes array as above
   * visualize
