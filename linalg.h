@@ -5,10 +5,15 @@ struct Point{
     Double_t x;
     Double_t y;
     Double_t z;
+    Double_t dx;
+    Double_t dy;
+    Double_t dz;
 
-    Point(Double_t tX=0, Double_t tY=0, Double_t tZ=0)
+    Point(Double_t tX=0, Double_t tY=0, Double_t tZ=0, Double_t tdx = 0,
+            Double_t tdy = 0, Double_t tdz = 0)
     {
         x = tX; y = tY; z = tZ;
+        dx = tdx; dy = tdy; dz = tdz;
     }
 
 };
@@ -325,6 +330,33 @@ Vector getXYSlope(const Point &A, const Point &B)
     return v;
 }
 
+Double_t getDist(Double_t x, Double_t y, Double_t x1, Double_t y1)
+{
+    return sqrt(pow(x-x1,2) + pow(y-y1,2));
+}
+
+bool isWithinUncert(const Track& t)
+{
+    //TODO use a better method?
+    //Assume A and C and correct, fit B to it and use residiuals
+    Double_t zLen = abs(t[0].z - t[2].z);
+    //Expected x and y
+    Double_t xSlope = (t[2].x-t[0].x) / (t[2].z-t[0].z);
+    Double_t ySlope = (t[2].y-t[0].y) / (t[2].z-t[0].z);
+    Double_t eX = t[2].x + xSlope * t[2].z-t[1].z;
+    Double_t eY = t[2].y + ySlope * t[2].z-t[1].z;
+    Double_t res = getDist(t[1].x, t[1].y, eX, eY);
+    Double_t xOff = t[1].dx 
+        + ((t[0].x) * ((t[2].z-t[1].z)/zLen)) 
+        + ((t[1].x) * ((t[1].z-t[0].z)/zLen));
+    Double_t yOff = t[1].dy 
+        + ((t[0].y) * ((t[2].z-t[1].z)/zLen)) 
+        + ((t[1].y) * ((t[1].z-t[0].z)/zLen));
+    Double_t uRes = getDist(eX, eY, xOff, yOff);
+    std::cout << "Residiaul: " << res << " within uncert: " << uRes << std::endl;
+    return res < uRes;
+    //return true;
+}
 
 void printMatrix(const Matrix& m)
 {
@@ -348,6 +380,7 @@ void printVector(const Vector& v)
 
 void printPoint(const Point& p)
 {
-    std::cout << "(" << p.x << ", " << p.y << ", " << p.z << ")" << std::endl;
+    std::cout << "(" << p.x << ", " << p.y << ", " << p.z << ") +\\- (" 
+        << p.dx << ", " << p.dy << ", " << p.dz << ")" << std::endl; 
 }
 
