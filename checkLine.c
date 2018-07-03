@@ -1,5 +1,6 @@
+//written by Daniel DeLayo
 #include <iostream>
-//#include "linalg.h"
+#include "linalg.h"
 
 bool isSane(Point A, Point B, Point C)
 {    
@@ -13,7 +14,7 @@ bool isSane(Track t)
 }
 bool init = false;
 TMultiGraph *graph;
-TCanvas *visCan = new TCanvas("3dvis", "Visualization");
+TCanvas *visCan;
 void initVisualize()
 {
 
@@ -37,6 +38,12 @@ void initVisualize(double **planes)
 
 void initVisualize(Point origin, double **planes)
 {
+    if (init)
+    {
+        std::cout << "Reinitializing vis" << std::endl; 
+        clearVis();
+    }
+    visCan = new TCanvas("3dvis", "Visualization");
     visCan->cd();
     for (int i = 0; i < 3; i++)
     {
@@ -94,6 +101,7 @@ void visualize(Point A, Point B, Point C)
         line->SetLineColor(2);
         line->DrawClone();
     }
+    visCan->Draw();
 }
 
 void visualize(Track t)
@@ -105,6 +113,7 @@ void clearVis()
 {
     visCan->Clear();
     init = false;   
+    delete visCan;
 }
 
 

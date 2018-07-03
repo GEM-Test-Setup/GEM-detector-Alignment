@@ -1,3 +1,4 @@
+//written by Daniel DeLayo
 #include <iostream>
 const Double_t pi = 3.1415926535897;
 
@@ -16,6 +17,11 @@ struct Point{
         dx = tdx; dy = tdy; dz = tdz;
     }
 
+    Point (const Point& A)
+    {
+        x = A.x; y = A.y; z = A.z;
+        dx = A.dx; dy = A.dy; dz = A.dz;
+    }
 };
 struct Vector
 {
@@ -46,7 +52,7 @@ struct Vector
     {
         return row[index];
     }
-    
+
     const Double_t &operator[](const int index) const
     {
         return row[index];
@@ -72,9 +78,10 @@ struct Track
     Track() {}
     Track(const Point &A, const Point &B, const Point &C)
     {
-        points[0] = A; 
-        points[1] = B; 
-        points[2] = C;
+
+        points[0] = Point(A); 
+        points[1] = Point(B); 
+        points[2] = Point(C);
     }
 
     Track(const Vector &A, const Vector &B, const Vector &C)
@@ -310,6 +317,12 @@ Matrix getRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
     zRot[1][0] = sin(zRad);
     zRot[1][1] = cos(zRad);
     return multiply(multiply(xRot, yRot), zRot);   
+}
+
+Matrix getBodyRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
+{
+    //FIXME TODO talk with cameron about body rotations
+    return multiply(multiply(getRotation(0,0,-zRad), getRotation(0, -yRad)), getRotation(xRad, yRad, zRad));
 }
 
 Vector getTranslation(Double_t x, Double_t y, Double_t z)

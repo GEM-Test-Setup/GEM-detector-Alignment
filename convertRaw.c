@@ -1,3 +1,4 @@
+//written by Daniel DeLayo
 //#include "linalg.h"
 #include <vector>
 #include "TH1.h"
@@ -13,8 +14,7 @@
 //dQ uncertainty in a channel (assumed the same for every channel)
 //Result value ranges from 0-2^16 (16 bit), QDC dependent
 const Double_t dQ = 2;
-//TODO Propagate dQ based on specifications (Volts per channel?)
-//const Double_t dQ = 10000/(pow(2,16));
+//TODO Propagate to find dQ?
 
 const int nbins = 256;
 const int minX = -5;
@@ -326,7 +326,7 @@ void makeTestData()
 {
     TFile conf("offsets.root", "RECREATE");
 
-    double xTrans, yTrans, zTrans, xRot, yRot, zRot = 0;
+    double* xTrans[2], yTrans[2], zTrans[2], xRot[2], yRot[2], zRot[2];
 
     TTree *treeConf = new TTree("T", "Gem Offsets. Top, Mid, Bot. Rotations are about given axis.");
     treeConf->Branch("gems.xTrans", &xTrans);
@@ -413,11 +413,12 @@ void convertRaw(bool skipOffsets=false)
     //convert shower into x, y, z
     //take RAW GEM X,Y,Z and turn it into real X, Y, Z by fitting distribution into reality
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
+    Double_t uxRot[3], uyRot[3], uzRot[3], uxTrans[3], uyTrans[3], uzTrans[3];
     if (!noOffsets)
     {
         TFile conf("offsets.root");
         TTree* treeConf = (TTree*)conf.Get("T");   
-        Double_t txRot=0, tyRot=0, tzRot=0, txTrans=0, tyTrans=0, tzTrans=0;
+        Double_t txRot[2], tyRot[2], tzRot[2], txTrans[2], tyTrans[2], tzTrans[2];
 
         treeConf->SetBranchAddress("gems.xTrans", &txTrans);
         treeConf->SetBranchAddress("gems.yTrans", &tyTrans);
@@ -434,14 +435,21 @@ void convertRaw(bool skipOffsets=false)
         for (int i = 0; i < treeConf->GetEntries(); i++)
         {
             treeConf->GetEntry(i);
-            xRot[i] = txRot;      
-            yRot[i] = tyRot;      
-            zRot[i] = tzRot;      
-            xTrans[i] = txTrans;      
-            yTrans[i] = tyTrans;      
-            zTrans[i] = tzTrans;
+            xRot[i] = txRot[0];      
+            yRot[i] = tyRot[0];      
+            zRot[i] = tzRot[0];      
+            xTrans[i] = txTrans[0];      
+            yTrans[i] = tyTrans[0];      
+            zTrans[i] = tzTrans[0];
+            
+            uxRot[i] = txRot[1];      
+            uyRot[i] = tyRot[1];      
+            uzRot[i] = tzRot[1];      
+            uxTrans[i] = txTrans[1];      
+            uyTrans[i] = tyTrans[1];      
+            uzTrans[i] = tzTrans[1];
 
-            std::cout << "zTrans" << zTrans[i] << std::endl;
+            //std::cout << "zTrans" << zTrans[i] << std::endl;
         }
     }
     TTree* res = new TTree("T", "Contains corrected particle tracks");
@@ -478,6 +486,9 @@ void convertRaw(bool skipOffsets=false)
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
+                uncert[i] = multiply(getRotation(xRot[i], yRot[i], zRot[i]), uncert[i]);
+                uncert[i] = add(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
+
                 //FIXME assume uncertainty is invariant under above transformations
                 x[i] = v[0];
                 y[i] = v[1];
