@@ -319,10 +319,53 @@ Matrix getRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
     return multiply(multiply(xRot, yRot), zRot);   
 }
 
+Matrix getInvertRotation(Double_t xRad, Double_t yRad, Double_t zRad)
+{
+    return multiply(multiply(getRotationMatrix(0,0,-zRad), getRotationMatrix(0,-yRad)), getRotationMatrix(-xRad));
+}
+
 Matrix getBodyRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
 {
-    //FIXME TODO talk with cameron about body rotations
+    //TODO Should be right but needs testing
     return multiply(multiply(getRotation(0,0,-zRad), getRotation(0, -yRad)), getRotation(xRad, yRad, zRad));
+}
+
+Vector mutliplyUncert(Matrix a, Vector v)
+{
+    Matrix m;
+    
+    return m;
+}
+
+Matrix getRotatationUncert(Double_t xRad, Double_t yRad, Double_t zRad)
+{
+    Matrix xRot, yRot, zRot;
+    xRot[0][0] = 1;
+    xRot[1][1] = 1 - TMath::Power(xRad, 2)/2.0; //cos(xRad);
+    xRot[2][1] = -xRad; //-sin(xRad);
+    xRot[1][2] = xRad; //sin(xRad);
+    xRot[2][2] = 1 - TMath::Power(xRad, 2)/2.0; //cos(xRad);
+
+    yRot[1][1] = 1;
+    yRot[0][0] = 1 - TMath::Power(yRad, 2)/2.0; //cos(yRad);
+    yRot[2][0] = yRad; //sin(yRad);
+    yRot[0][2] = -yRad; //-sin(yRad);
+    yRot[2][2] = 1 - TMath::Power(yRad, 2)/2.0; //cos(yRad);
+
+    zRot[2][2] = 1;
+    zRot[0][0] = 1 - TMath::Power(zRad, 2)/2.0; //cos(zRad);
+    zRot[0][1] = -zRad; //-sin(zRad);
+    zRot[1][0] = zRad; //sin(zRad);
+    zRot[1][1] = 1 - TMath::Power(zRad, 2)/2.0; //cos(zRad);
+    
+    return multiply(multiply(xRot, yRot), zRot);
+}
+
+Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad, Double_t uyRad, Double_t uzRad, const Vector &uncert)
+{
+    Vector v;
+    v = multiplyUncert(getRotation(xRot, yRot, zRot), uncert);
+    return v;
 }
 
 Vector getTranslation(Double_t x, Double_t y, Double_t z)
@@ -359,12 +402,15 @@ bool isWithinUncert(const Track& t)
     Double_t eX = t[0].x + xSlope * (t[1].z-t[0].z);
     Double_t eY = t[0].y + ySlope * (t[1].z-t[0].z);
     Double_t res = getDist(t[1].x, t[1].y, eX, eY);
+    //Weight residuals by inverse distance. Points very close to B can affect it more
     Double_t xOff = t[1].dx  
         + (t[0].dx * ((t[2].z-t[1].z)/zLen)) 
         + (t[2].dx * ((t[1].z-t[0].z)/zLen));
+    
     Double_t yOff = t[1].dy 
         + (t[0].dy * ((t[2].z-t[1].z)/zLen)) 
         + (t[2].dy * ((t[1].z-t[0].z)/zLen));
+    
     Double_t uRes = getDist(0, 0, xOff, yOff);
     //std::cout << "Residiaul: " << res << " within uncert: " << uRes << std::endl;
     return res < uRes;

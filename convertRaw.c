@@ -15,6 +15,7 @@
 //Result value ranges from 0-2^16 (16 bit), QDC dependent
 const Double_t dQ = 2;
 //TODO Propagate to find dQ?
+//FIXME justify value for dQ
 
 const int nbins = 256;
 const int minX = -5;
@@ -486,10 +487,11 @@ void convertRaw(bool skipOffsets=false)
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
-                uncert[i] = multiply(getRotation(xRot[i], yRot[i], zRot[i]), uncert[i]);
+                //uncert[i] = multiply(getRotation(xRot[i], yRot[i], zRot[i]), uncert[i]);
+                uncert[i] = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], uncert[i])
                 uncert[i] = add(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
-
-                //FIXME assume uncertainty is invariant under above transformations
+                 
+                //TODO implement uncertainty in rotations
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;

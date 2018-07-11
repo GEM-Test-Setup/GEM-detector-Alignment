@@ -6,7 +6,7 @@
 #endif
 
 Double_t const resolution = 0.04 / sqrt(12);
-const int ntracks = 12;
+const int ntracks = 15;
 Track** tracks;// = new Track[ntracks];
 
 void regress()
@@ -25,57 +25,59 @@ void regress()
         Point C(randx2, randy2, 0);
 
         Vector vecC(C);
-        C = makePoint(add(vecC, getTranslation(2, 1, 0)));
-        //Track c = new Track(A, B, C);
+        C = makePoint(add(vecC, getTranslation(0, 2, 0)));
         tracks[i] = new Track(A, B, C);
     }   
-    TMinuit* gMinuit = new TMinuit(6*2); //3 trans, 3 rot for 2 planes. 6*2 = 12   
+    ROOT::Math::Minimizer *min = ROOT::Math::Factory::CreateMinimizer
+        ("Minuit", ""); //Tried: Genetic, Minuit
+    min->SetMaxIterations(1000);
+    min->SetTolerance(0.0001);
+    min->SetPrintLevel(10);
+
+    ROOT::Math::Functor fcn(&cost, 12);
+    //ROOT::Math::Functor fcn(&minCost, 12);
+    min->SetFunction(fcn);
     Double_t minRot = -pi/2; //Radians
     Double_t maxRot = pi/2;
-    Double_t stepRot = .01;
+    Double_t stepRot = .05;
 
     Double_t minTrans = -3; //cm
     Double_t maxTrans = 3;
     Double_t stepTrans = resolution;
 
-    gMinuit->DefineParameter(0, "Mid X Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(1, "Mid Y Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(2, "Mid Z Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(3, "Mid X Rotation", 0, stepRot, minRot, maxRot);
-    gMinuit->DefineParameter(4, "Mid Y Rotation", 0, stepRot, minRot, maxRot);
-    gMinuit->DefineParameter(5, "Mid Z Rotation", 0, stepRot, minRot, maxRot);
+    min->SetVariable(0, "Mid X Offset", 0, stepTrans);
+    min->SetVariable(1, "Mid Y Offset", 0, stepTrans);
+    min->SetVariable(2, "Mid Z Offset", 0, stepTrans);
+    min->SetVariable(3, "Mid X Rotation", 0, stepRot);
+    min->SetVariable(4, "Mid Y Rotation", 0, stepRot);
+    min->SetVariable(5, "Mid Z Rotation", 0, stepRot);
 
-    gMinuit->DefineParameter(6, "Bot X Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(7, "Bot Y Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(8, "Bot Z Offset", 0, stepTrans, minTrans, maxTrans);
-    gMinuit->DefineParameter(9, "Bot X Rotation", 0, stepRot, minRot, maxRot);
-    gMinuit->DefineParameter(10, "Bot Y Rotation", 0, stepRot, minRot, maxRot);
-    gMinuit->DefineParameter(11, "Bot Z Rotation", 0, stepRot, minRot, maxRot);
+    min->SetVariable(6, "Bot X Offset", 0, stepTrans);
+    min->SetVariable(7, "Bot Y Offset", 0, stepTrans);
+    min->SetVariable(8, "Bot Z Offset", 0, stepTrans);
+    min->SetVariable(9, "Bot X Rotation", 0, stepRot);
+    min->SetVariable(10, "Bot Y Rotation", 0, stepRot);
+    min->SetVariable(11, "Bot Z Rotation", 0, stepRot);
 
-    gMinuit->SetFCN(fcn);
+    Double_t *zeros = new Double_t[12];
+    for (int i = 0; i < 12; i++)
+    {
+        zeros[i] = 0;
+    }
 
-    //MIGRAD
-    Int_t errflag;
-    Double_t arglist[2];
-    arglist[0] = 1;
-    gMinuit->mnexcm("SET ERR", arglist, 1, errflag);
+    std::cout << "Starting cost: " <<  cost(zeros) << std::endl;
+    min->Minimize();
 
-    arglist[0] = 5000;
-    arglist[1] = 1;
-    gMinuit->mnexcm("MIGRAD", arglist, 2, errflag);
-    std::cout << errflag << " should be 0" << std::endl;
-
-    /*for (int i = 0; i < 12; i++)
-      {
-      Double_t param, err;
-      gMinuit->GetParameter(i, param, err);
-      std::cout << i << ": " << param << " +/- " << err << std::endl;
-      }*/
+}
+void minCost(int& nPar, Double_t* par, Double_t &f, Double_t* idk, Int_t flag)
+{
+    f = cost(par);   
 }
 
-void fcn(Int_t& npar, Double_t *gin, Double_t& f, Double_t* par, Int_t flag)
+
+Double_t cost(const Double_t* par)
 {
-    f = 0;
+    Double_t f = 0;
     for (int j = 0; j < ntracks; j++)
     {
         Track& current = *tracks[j];  
@@ -96,21 +98,14 @@ void fcn(Int_t& npar, Double_t *gin, Double_t& f, Double_t* par, Int_t flag)
         //f += getChi2(*translated);
         f += wrongness(*translated);
     }
+    //std::cout << "f: " << f << std::endl;
+    return f;
 }
 Double_t uncertainty = pow(0.04/sqrt(12),2);
 
 Double_t wrongness(Track o)
 {
-    Vector v = getXYSlope(o[0], o[1]);
-    Vector w = getXYSlope(o[1], o[2]);
-    Vector res = add(v, multiply(-1, w));
-    //printVector(v);
-    //printVector(w);
-    //printVector(res);
-
-    Double_t val = (pow(res[0],2)
-    + pow(res[1],2)
-    + pow(res[2],2)) /uncertainty;
+    Double_t val = degToRad(180)-getAngle(o);
     //std::cout << "wrongness: " << val << std::endl;
     return val;
 }
