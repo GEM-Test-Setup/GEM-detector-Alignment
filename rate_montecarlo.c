@@ -9,7 +9,7 @@ void rate_montecarlo()
     //cos^2 theta distribution
     Double_t width = 9; //cm
     Double_t length = 9; //cm
-    Double_t seperation = 154; //cm
+    Double_t seperation = 162; //cm
 
     Point o(0,0,0);
     double **planes = new double[3][];
@@ -22,14 +22,14 @@ void rate_montecarlo()
     }
     initVisualize(o, planes);
      
-    TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x)", 0, pi/2);
+    TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x) * TMath::Sin(x)", 0, pi/2);
     //dist->Draw();
     Double_t good = 0;
     TRandom *rand = new TRandom2();
-    int total = 1000;
+    int total = 1000000;
     for (int i = 0; i < total; i++)
     {
-        if (i > 1 && i%1000 == 0)
+        if (i > 1 && i%10000 == 0)
             std::cout << "Current: " << good << "/" << i << ", " << (100.0*good) / i << "%" << " Max: " << total << std::endl;
         Double_t thetaRand = dist->GetRandom();
         Double_t phiRand = rand->Uniform(2*pi);
@@ -43,13 +43,13 @@ void rate_montecarlo()
         Double_t hitX = v[0] + topHitX;
         Double_t hitY = v[1] + topHitY;
         if (hitX >= 0 && hitX <= length && hitY >= 0 && hitY <= width)
-        good++;
-        Point A(topHitX, topHitY, seperation);
-        Point B(hitX, hitY, 0);
-        Point C(hitX, hitY, 0);
-        visualize(A, B, C);
-        
+        {good++;
+        //Point A(topHitX, topHitY, seperation);
+        //Point B(hitX, hitY, 0);
+        //Point C(hitX, hitY, 0);
+        //visualize(A, B, C);
+        }
     }
     std::cout << "Valid hits: " << good << "/" << total << std::endl;
-    std::cout << (81.0*good)/total << " hits per minute." << std::endl;
+    std::cout << (81.0*60*good)/total << " events per hour." << std::endl;
 }
