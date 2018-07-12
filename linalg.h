@@ -321,7 +321,7 @@ Matrix getRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
 
 Matrix getInvertRotation(Double_t xRad, Double_t yRad, Double_t zRad)
 {
-    return multiply(multiply(getRotationMatrix(0,0,-zRad), getRotationMatrix(0,-yRad)), getRotationMatrix(-xRad));
+    return multiply(multiply(getRotation(0,0,-zRad), getRotation(0,-yRad)), getRotation(-xRad));
 }
 
 Matrix getBodyRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
@@ -330,41 +330,44 @@ Matrix getBodyRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
     return multiply(multiply(getRotation(0,0,-zRad), getRotation(0, -yRad)), getRotation(xRad, yRad, zRad));
 }
 
-Vector mutliplyUncert(Matrix a, Vector v)
+Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad, Double_t uyRad, Double_t uzRad, Double_t x, Double_t y, Double_t z, const Vector &uncert)
 {
-    Matrix m;
-    
-    return m;
-}
-
-Matrix getRotatationUncert(Double_t xRad, Double_t yRad, Double_t zRad)
-{
-    Matrix xRot, yRot, zRot;
-    xRot[0][0] = 1;
-    xRot[1][1] = 1 - TMath::Power(xRad, 2)/2.0; //cos(xRad);
-    xRot[2][1] = -xRad; //-sin(xRad);
-    xRot[1][2] = xRad; //sin(xRad);
-    xRot[2][2] = 1 - TMath::Power(xRad, 2)/2.0; //cos(xRad);
-
-    yRot[1][1] = 1;
-    yRot[0][0] = 1 - TMath::Power(yRad, 2)/2.0; //cos(yRad);
-    yRot[2][0] = yRad; //sin(yRad);
-    yRot[0][2] = -yRad; //-sin(yRad);
-    yRot[2][2] = 1 - TMath::Power(yRad, 2)/2.0; //cos(yRad);
-
-    zRot[2][2] = 1;
-    zRot[0][0] = 1 - TMath::Power(zRad, 2)/2.0; //cos(zRad);
-    zRot[0][1] = -zRad; //-sin(zRad);
-    zRot[1][0] = zRad; //sin(zRad);
-    zRot[1][1] = 1 - TMath::Power(zRad, 2)/2.0; //cos(zRad);
-    
-    return multiply(multiply(xRot, yRot), zRot);
-}
-
-Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad, Double_t uyRad, Double_t uzRad, const Vector &uncert)
-{
+    //FIXME test
+    //Uncertainties propagated by mathematica using sqrt(sum(partial * u^2))
     Vector v;
-    v = multiplyUncert(getRotation(xRot, yRot, zRot), uncert);
+    v[0] = sqrt(
+            pow(cos(zRad) * cos(yRad) * sin(uncert[0]) ,2) +
+            pow(uncert[2], 2) * pow(cos(zRad) * cos(xRad) * sin(yRad) + sin(zRad) * sin(xRad), 2) +
+            pow(uncert[1], 2) * pow(cos(xRad) * sin(zRad) - cos(zRad) * sin(yRad) * sin(xRad), 2) +
+            pow(uxRad, 2) * pow(cos(xRad) * (z * sin(zRad) + y * cos(zRad) * sin(yRad)) + (y * sin(zRad) - z * cos(zRad) * sin(yRad)) * sin(xRad), 2) +
+            pow(uyRad * cos(zRad), 2) * pow(x * sin(yRad) - cos(yRad) * (z * cos(xRad) + y * sin(xRad)),2) +
+            pow(uzRad, 2) * pow(cos(zRad) * (y * cos(xRad) - z * sin(xRad)) + sin(zRad) * (x * cos(yRad) + sin(yRad) * (z * cos(xRad) + y * sin(xRad))),2)
+            );
+    v[1] = sqrt(
+            pow(cos(yRad) * sin(zRad) * sin(uncert[0]) ,2) +
+            pow(uncert[2], 2) * pow(cos(xRad) * sin(zRad) * sin(yRad) - cos(zRad) * sin(xRad), 2) +
+            pow(uncert[1], 2) * pow(cos(zRad) * sin(xRad) + sin(zRad) * sin(yRad) * sin(xRad), 2) +
+            pow(uyRad * sin(zRad), 2) * pow(x * sin(yRad) - cos(yRad) * (z * cos(xRad) + y * sin(xRad)),2) +
+            pow(uxRad, 2) * pow(cos(zRad) * (z * cos(xRad) + y * sin(xRad)) + sin(zRad) * sin(yRad) * (-y * cos(xRad) + z * sin(xRad)), 2) +
+            pow(uzRad, 2) * pow(sin(zRad) * (-y * cos(xRad) + z * sin(xRad)) + cos(zRad) * (x * cos(yRad) + sin(yRad) * (z * cos(xRad) + y * sin(xRad))),2)
+            );
+    std::cout << "Begin diag" << std::endl;
+    std::cout << 
+            pow(cos(yRad) * sin(zRad) * sin(uncert[0]) ,2) 
+            << std::endl;
+    std::cout << 
+            pow(uncert[2], 2) * pow(cos(xRad) * sin(zRad) * sin(yRad) - cos(zRad) * sin(xRad), 2)
+            << std::endl;
+    std::cout << 
+            pow(uncert[1], 2) * pow(cos(xRad) * sin(zRad) - cos(zRad) * sin(yRad) * sin(xRad), 2)            << std::endl;
+    std::cout << "End diag" << std::endl;
+    v[2] = sqrt(
+            pow(uncert[2] * cos(yRad) * cos(xRad), 2) +
+            pow(uncert[0] * sin(yRad), 2) +
+            pow(uncert[1] * cos(yRad) * sin(xRad), 2) +
+            pow(uxRad * cos(yRad),2) * pow(y * cos(xRad) - z * sin(xRad),2) +
+            pow(uyRad,2) * pow(x * cos(yRad) + sin(yRad) * (z * cos(xRad) + y * sin(xRad)),2) 
+            );
     return v;
 }
 

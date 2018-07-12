@@ -326,8 +326,8 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
 void makeTestData()
 {
     TFile conf("offsets.root", "RECREATE");
-
-    double* xTrans[2], yTrans[2], zTrans[2], xRot[2], yRot[2], zRot[2];
+    Double_t xTrans, yTrans, zTrans, xRot, yRot, zRot;
+    Double_t uxTrans, uyTrans, uzTrans, uxRot, uyRot, uzRot;
 
     TTree *treeConf = new TTree("T", "Gem Offsets. Top, Mid, Bot. Rotations are about given axis.");
     treeConf->Branch("gems.xTrans", &xTrans);
@@ -336,7 +336,19 @@ void makeTestData()
     treeConf->Branch("gems.xRot", &xRot);
     treeConf->Branch("gems.yRot", &yRot);
     treeConf->Branch("gems.zRot", &zRot);
+    treeConf->Branch("gems.uxTrans", &uxTrans);
+    treeConf->Branch("gems.uyTrans", &uyTrans);
+    treeConf->Branch("gems.uzTrans", &uzTrans);
+    treeConf->Branch("gems.uxRot", &uxRot);
+    treeConf->Branch("gems.uyRot", &uyRot);
+    treeConf->Branch("gems.uzRot", &uzRot);
 
+    uxTrans = 0.1;//0.2;
+    uyTrans = 0.1;//0.2;
+    uzTrans = 0.1;//0.2;
+    uxRot = degToRad(0.1);
+    uyRot = degToRad(0.1);
+    uzRot = degToRad(0.1);
     //xTrans=1;
     //yTrans=2;
     //zTrans=3;
@@ -419,7 +431,8 @@ void convertRaw(bool skipOffsets=false)
     {
         TFile conf("offsets.root");
         TTree* treeConf = (TTree*)conf.Get("T");   
-        Double_t txRot[2], tyRot[2], tzRot[2], txTrans[2], tyTrans[2], tzTrans[2];
+        Double_t txRot, tyRot, tzRot, txTrans, tyTrans, tzTrans;
+        Double_t tuxRot, tuyRot, tuzRot, tuxTrans, tuyTrans, tuzTrans;
 
         treeConf->SetBranchAddress("gems.xTrans", &txTrans);
         treeConf->SetBranchAddress("gems.yTrans", &tyTrans);
@@ -428,6 +441,13 @@ void convertRaw(bool skipOffsets=false)
         treeConf->SetBranchAddress("gems.yRot", &tyRot);
         treeConf->SetBranchAddress("gems.zRot", &tzRot);
 
+        treeConf->SetBranchAddress("gems.uxTrans", &tuxTrans);
+        treeConf->SetBranchAddress("gems.uyTrans", &tuyTrans);
+        treeConf->SetBranchAddress("gems.uzTrans", &tuzTrans);
+        treeConf->SetBranchAddress("gems.uxRot", &tuxRot);
+        treeConf->SetBranchAddress("gems.uyRot", &tuyRot);
+        treeConf->SetBranchAddress("gems.uzRot", &tuzRot);
+        
         if (treeConf->GetEntries() != 3)
         {
             std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
@@ -436,19 +456,19 @@ void convertRaw(bool skipOffsets=false)
         for (int i = 0; i < treeConf->GetEntries(); i++)
         {
             treeConf->GetEntry(i);
-            xRot[i] = txRot[0];      
-            yRot[i] = tyRot[0];      
-            zRot[i] = tzRot[0];      
-            xTrans[i] = txTrans[0];      
-            yTrans[i] = tyTrans[0];      
-            zTrans[i] = tzTrans[0];
+            xRot[i] = txRot;      
+            yRot[i] = tyRot;      
+            zRot[i] = tzRot;      
+            xTrans[i] = txTrans;      
+            yTrans[i] = tyTrans;      
+            zTrans[i] = tzTrans;
             
-            uxRot[i] = txRot[1];      
-            uyRot[i] = tyRot[1];      
-            uzRot[i] = tzRot[1];      
-            uxTrans[i] = txTrans[1];      
-            uyTrans[i] = tyTrans[1];      
-            uzTrans[i] = tzTrans[1];
+            uxRot[i] = tuxRot;      
+            uyRot[i] = tuyRot;      
+            uzRot[i] = tuzRot;      
+            uxTrans[i] = tuxTrans;      
+            uyTrans[i] = tuyTrans;      
+            uzTrans[i] = tuzTrans;
 
             //std::cout << "zTrans" << zTrans[i] << std::endl;
         }
@@ -488,10 +508,11 @@ void convertRaw(bool skipOffsets=false)
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
                 //uncert[i] = multiply(getRotation(xRot[i], yRot[i], zRot[i]), uncert[i]);
-                uncert[i] = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], uncert[i])
+                //printVector(uncert[i]); 
+                uncert[i] = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], x[i], y[i], z[i], uncert[i]);
+                //std::cout << "uxTrans: " << uxTrans[i] << std::endl;
                 uncert[i] = add(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
-                 
-                //TODO implement uncertainty in rotations
+                //printVector(uncert[i]); 
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;

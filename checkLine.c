@@ -1,6 +1,6 @@
 //written by Daniel DeLayo
 #include <iostream>
-#include "linalg.h"
+//#include "linalg.h"
 
 bool isSane(Point A, Point B, Point C)
 {    

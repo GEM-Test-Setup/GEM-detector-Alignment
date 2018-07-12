@@ -7,9 +7,9 @@ void rate_montecarlo()
     
 
     //cos^2 theta distribution
-    Double_t width = 9; //cm
-    Double_t length = 9; //cm
-    Double_t seperation = 162; //cm
+    Double_t width = 25; //cm
+    Double_t length = 25; //cm
+    Double_t seperation = 70; //cm
 
     Point o(0,0,0);
     double **planes = new double[3][];
@@ -29,8 +29,10 @@ void rate_montecarlo()
     int total = 1000000;
     for (int i = 0; i < total; i++)
     {
-        if (i > 1 && i%10000 == 0)
+        if (i > 1 && i%10000 == 0){
             std::cout << "Current: " << good << "/" << i << ", " << (100.0*good) / i << "%" << " Max: " << total << std::endl;
+            std::cout << (width*length*60*good)/i << " events per hour." << std::endl;
+        }
         Double_t thetaRand = dist->GetRandom();
         Double_t phiRand = rand->Uniform(2*pi);
         Double_t topHitX = rand->Uniform(length); 
@@ -51,5 +53,5 @@ void rate_montecarlo()
         }
     }
     std::cout << "Valid hits: " << good << "/" << total << std::endl;
-    std::cout << (81.0*60*good)/total << " events per hour." << std::endl;
+    std::cout << (width*length*60*good)/total << " events per hour." << std::endl;
 }
