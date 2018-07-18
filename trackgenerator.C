@@ -16,7 +16,7 @@ void trackgenerator(int random_seed =0)
 	
 	TRandom3 * random_gen = new TRandom3(random_seed);
 	
-	// Number of Events?
+	// Number of Events
 	const int nevent = 1000; 
 	
 	// Coordinates
