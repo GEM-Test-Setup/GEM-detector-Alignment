@@ -1,3 +1,6 @@
+#ifndef __LINALG_LOAD
+#define __LINALG_LOAD    
+
 //written by Daniel DeLayo
 #include <iostream>
 const Double_t pi = 3.1415926535897;
@@ -479,4 +482,4 @@ void printPoint(const Point& p)
     std::cout << "(" << p.x << ", " << p.y << ", " << p.z << ") +\\- (" 
         << p.dx << ", " << p.dy << ", " << p.dz << ")" << std::endl; 
 }
-
+#endif
