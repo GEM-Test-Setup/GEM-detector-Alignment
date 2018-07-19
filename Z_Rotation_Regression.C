@@ -68,7 +68,7 @@ void fcn(int &npar, double *gin, double &result, double *par, int iflag)
 	for (int i=0; i<nevent;i++)
 	{
 		// Calculates chi2 as the sum of the averages of the chi2's in x and y for each event
-		track->GetEntry(i);
+		Tin->GetEntry(i);
 
 		x_fit_val = function_x1(x_gem_val[1],y_gem_val[1],x_gem_val[2],y_gem_val[2],par[0],par[1],par[2],par[3]);
 		y_fit_val = function_y1(x_gem_val[1],y_gem_val[1],x_gem_val[2],y_gem_val[2],par[0],par[1],par[4],par[5]);
