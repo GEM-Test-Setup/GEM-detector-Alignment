@@ -1,6 +1,6 @@
 //written by Daniel DeLayo
 #include <iostream>
-//#include "linalg.h"
+#include "linalg.h"
 
 bool isSane(Point A, Point B, Point C)
 {    
@@ -15,26 +15,17 @@ bool isSane(Track t)
 bool init = false;
 TMultiGraph *graph;
 TCanvas *visCan;
-void initVisualize()
-{
 
-    double **planes = new double[3][];
-    
-    for (int i = 0; i < 3; i++)
+void clearVis()
+{
+    if (visCan)
     {
-        planes[i] = new double[3];
-        planes[i][0] = 200 - 100 * i;      
-        planes[i][1] = 10;      
-        planes[i][2] = 10;      
+        visCan->Clear();
+        init = false;   
+        delete visCan;
     }
-    initVisualize(planes);
 }
 
-void initVisualize(double **planes)
-{
-    Point o(-5, -5, 0);
-    initVisualize(o, planes);
-}
 
 void initVisualize(Point origin, double **planes)
 {
@@ -62,6 +53,28 @@ void initVisualize(Point origin, double **planes)
     init = true;
 }
 
+void initVisualize(double **planes)
+{
+    Point o(-5, -5, 0);
+    initVisualize(o, planes);
+}
+
+void initVisualize()
+{
+
+    double **planes = new double*[3];
+    
+    for (int i = 0; i < 3; i++)
+    {
+        planes[i] = new double[3];
+        planes[i][0] = 200 - 100 * i;      
+        planes[i][1] = 10;      
+        planes[i][2] = 10;      
+    }
+    initVisualize(planes);
+}
+
+
 void visualize(Point A, Point B, Point C)
 {
     if (!init)
@@ -80,11 +93,11 @@ void visualize(Point A, Point B, Point C)
     {
         Point *p;
         if ( i == 0)
-            p = A;
+            p = &A;
         else if (i == 1)
-            p = B;
+            p = &B;
         else
-            p = C;
+            p = &C;
         line = new TPolyLine3D(2);
         line->SetNextPoint(p->x+p->dx, p->y, p->z);
         line->SetNextPoint(p->x-p->dx, p->y, p->z);
@@ -108,14 +121,6 @@ void visualize(Track t)
 {
     visualize(t[0], t[1], t[2]);
 }
-
-void clearVis()
-{
-    visCan->Clear();
-    init = false;   
-    delete visCan;
-}
-
 
 void checkLine()
 {
