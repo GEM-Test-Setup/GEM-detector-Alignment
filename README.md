@@ -45,5 +45,12 @@ Used for 3d track visualization
     * visualize(Point, Point, Point)
     * visualize(Track)
 # regress.c
-Used to determine track offsets
+Used to determine track all offsets 
 WIP
+
+# Z_Rotation_Regression.C
+Calculates Z rotation offset and associated translation constants
+
+# trackgenerator.C
+Creates ROOT file to be read by Z_Rotation_Regression.C
+Uniform muon angular distribution
