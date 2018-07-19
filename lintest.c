@@ -40,6 +40,31 @@ void visZRotTest()
     visualize(D, E, F);
 }
 
+void visZBodyRotTest()
+{
+    //FIXME complete visualizations
+    gROOT->ProcessLine(".L checkLine.c");
+    std::cout << "Begin vistest" << std::endl;
+    std::cout << "Z Rot 180" << std::endl;
+    Point A(1, 1, 200);
+    Point B(2, 2, 100);
+    Point C(-3, -3, 0);
+    visualize(A, B, C);
+    Vector vA = Vector(A);
+    vA = multiply(getBodyRotation(0,0, degToRad(180)), vA);
+    vA = add(getTranslation(0,0,0), vA);
+    Point D = makePoint(vA);
+    Vector vB = Vector(B);
+    vB = multiply(getBodyRotation(0,0,degToRad(180)), vB);
+    vB = add(getTranslation(0,0,0), vB);
+    Point E = makePoint(vB);
+    Vector vC = Vector(C);
+    vC = multiply(getBodyRotation(0,0,degToRad(180)), vC);
+    vC = add(getTranslation(0,0,0), vC);
+    Point F = makePoint(vC);
+    visualize(D, E, F);
+}
+
 void visXRotTest()
 {
     gROOT->ProcessLine(".L checkLine.c");
@@ -137,11 +162,12 @@ void visXTransTest()
 
 void lintest()
 {
-    visXRotTest();
-    visYRotTest();
-    visZRotTest();
-    clearVis();
-    visXTransTest();
+    //visXRotTest();
+    //visYRotTest();
+    //visZRotTest();
+    visZBodyRotTest();
+    //clearVis();
+    //visXTransTest();
 
     Vector v;//= getTranslation(1, 2, 3);    
     printVector(v);

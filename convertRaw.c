@@ -343,23 +343,27 @@ void makeTestData()
     treeConf->Branch("gems.uyRot", &uyRot);
     treeConf->Branch("gems.uzRot", &uzRot);
 
-    uxTrans = 0.1;//0.2;
-    uyTrans = 0.1;//0.2;
-    uzTrans = 0.1;//0.2;
+    uxTrans = 0.2;
+    uyTrans = 0.2;
+    uzTrans = 0.2;
+    uxRot = degToRad(0);
+    uyRot = degToRad(0);
+    uzRot = degToRad(0);
+    
+    treeConf->Fill();
+    xTrans = 0.05;
+    yTrans = 0.05;
+    zTrans = 0.05;
+    xRot = degToRad(180.01);
+    yRot = degToRad(0.005);
+    zRot = degToRad(0.03);
+    uxTrans = 0.2;
+    uyTrans = 0.2;
+    uzTrans = 0.2;
     uxRot = degToRad(0.1);
     uyRot = degToRad(0.1);
     uzRot = degToRad(0.1);
-    //xTrans=1;
-    //yTrans=2;
-    //zTrans=3;
-    treeConf->Fill();
-    //xTrans=4;
-    //yTrans=5;
-    //zTrans=6;
     treeConf->Fill(); 
-    //xTrans=7;
-    //yTrans=8;
-    //zTrans=9;
     treeConf->Fill();
 
     treeConf->Write();
@@ -371,12 +375,20 @@ void makeTestData()
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
     
     //FIXME this sucks but it works
-    getRandHist(-2, "topX1")->Write();
-    getRandHist(0, "topY1")->Write();
-    getRandHist(-1, "midX1")->Write();
-    getRandHist(1, "midY1")->Write();
-    getRandHist(0, "botX1")->Write();
-    getRandHist(2, "botY1")->Write(); 
+    TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x) * TMath::Sin(x)", 0, pi/2);
+    TRandom *rand = new TRandom2();
+    const int total = 100;
+    for (int i = 0; i < total; i++)
+    {
+           
+    }
+    
+    getRandHist(-4.8, "topX1")->Write();
+    getRandHist(4.8, "topY1")->Write();
+    getRandHist(0, "midX1")->Write();
+    getRandHist(0, "midY1")->Write();
+    getRandHist(4.8, "botX1")->Write();
+    getRandHist(-4.8, "botY1")->Write(); 
     
     double* means = new double[2];
     double* ampl = new double[2];
@@ -414,7 +426,7 @@ void makeTestData()
 
     std::cout << "generated " << __LINE__ << std::endl;
 }
-
+//TODO implement ability to form 1D tracks then use energy distance to form 2D tracks
 void convertRaw(bool skipOffsets=false)
 {
     noOffsets = skipOffsets;
@@ -422,9 +434,10 @@ void convertRaw(bool skipOffsets=false)
     gROOT->ProcessLine(".L checkLine.c");
 
     std::cout << "Number of bins: " << nbins << std::endl;
+    
     makeTestData();
-    //convert shower into x, y, z
-    //take RAW GEM X,Y,Z and turn it into real X, Y, Z by fitting distribution into reality
+    
+    //Fille offset arrays (12 Double_t per gem)
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
     Double_t uxRot[3], uyRot[3], uzRot[3], uxTrans[3], uyTrans[3], uzTrans[3];
     if (!noOffsets)
@@ -482,10 +495,7 @@ void convertRaw(bool skipOffsets=false)
     {
         std::vector< TH1D* >* raw = getHists(j);
         splitHists(raw);
-        std::cout << "raw size" << raw->size() << std::endl;
-        std::vector< Point > topPoints;
-        std::vector< Point > midPoints;
-        std::vector< Point > botPoints;
+        std::vector< Point > topPoints, midPoints, botPoints;
 
         for (int k = 0; k < raw->size()/6; k++)
         {
@@ -498,7 +508,7 @@ void convertRaw(bool skipOffsets=false)
                 x[i] = getCenter(raw->at(6*k+2*i), ux);
                 y[i] = getCenter(raw->at(6*k+2*i+1), uy);
                 z[i] = 0;//200 - i*100;
-                uz = 0.1;
+                uz = 0; //resolving XY center has no bearing on Z uncertaianty
                 uncert[i][0] = ux;
                 uncert[i][1] = uy;
                 uncert[i][2] = uz;
@@ -507,12 +517,10 @@ void convertRaw(bool skipOffsets=false)
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
                 v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
-                //uncert[i] = multiply(getRotation(xRot[i], yRot[i], zRot[i]), uncert[i]);
-                //printVector(uncert[i]); 
+                
                 uncert[i] = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], x[i], y[i], z[i], uncert[i]);
-                //std::cout << "uxTrans: " << uxTrans[i] << std::endl;
-                uncert[i] = add(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
-                //printVector(uncert[i]); 
+                uncert[i] = addUncert(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
+                
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;
@@ -522,10 +530,9 @@ void convertRaw(bool skipOffsets=false)
             Point A(x[0],y[0],z[0], uncert[0][0], uncert[0][1], uncert[0][2]);
             Point B(x[1],y[1],z[1], uncert[1][0], uncert[1][1], uncert[1][2]);
             Point C(x[2],y[2],z[2], uncert[2][0], uncert[2][1], uncert[2][2]);
-            printPoint(A); 
-            printPoint(B); 
-            printPoint(C); 
-            
+            //printPoint(A); 
+            //printPoint(B); 
+           // printPoint(C); 
             
             topPoints.push_back(A);
             midPoints.push_back(B);

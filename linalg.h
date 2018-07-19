@@ -71,6 +71,33 @@ Point makePoint(const Vector &v)
     return p;
 }
 
+/*struct Track1D
+{
+    //TODO implement a track in a single dimension
+    Double_t vals[3];
+    Double_t uncert[3];
+    Double_t energy[3];
+    
+    Track1D &operator[](const int index)
+    {   
+        return vals[index];
+    }
+    const Track1D &operator[](const int index) const
+    {   
+        return vals[index];
+    }
+};
+
+Double_t getEnergyDist(Track1D x, Track1D y)
+{
+    Double_t dist = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        dist += pow(x.energy-y.energy,2);   
+    }
+    return sqrt(dist);
+}
+*/
 struct Track
 {
     Point points[3];
@@ -351,7 +378,7 @@ Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad,
             pow(uxRad, 2) * pow(cos(zRad) * (z * cos(xRad) + y * sin(xRad)) + sin(zRad) * sin(yRad) * (-y * cos(xRad) + z * sin(xRad)), 2) +
             pow(uzRad, 2) * pow(sin(zRad) * (-y * cos(xRad) + z * sin(xRad)) + cos(zRad) * (x * cos(yRad) + sin(yRad) * (z * cos(xRad) + y * sin(xRad))),2)
             );
-    std::cout << "Begin diag" << std::endl;
+/*    std::cout << "Begin diag" << std::endl;
     std::cout << 
             pow(cos(yRad) * sin(zRad) * sin(uncert[0]) ,2) 
             << std::endl;
@@ -361,7 +388,7 @@ Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad,
     std::cout << 
             pow(uncert[1], 2) * pow(cos(xRad) * sin(zRad) - cos(zRad) * sin(yRad) * sin(xRad), 2)            << std::endl;
     std::cout << "End diag" << std::endl;
-    v[2] = sqrt(
+*/    v[2] = sqrt(
             pow(uncert[2] * cos(yRad) * cos(xRad), 2) +
             pow(uncert[0] * sin(yRad), 2) +
             pow(uncert[1] * cos(yRad) * sin(xRad), 2) +
@@ -371,6 +398,13 @@ Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad,
     return v;
 }
 
+Vector addUncert(Vector v, Vector w)
+{
+    Vector r;
+    for (int i = 0; i < 3; i++)
+    r[i] = sqrt(pow(v[i], 2) + pow(w[i],2));
+    return r;
+}
 Vector getTranslation(Double_t x, Double_t y, Double_t z)
 {
     Vector v;
