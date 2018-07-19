@@ -145,15 +145,6 @@ void trackgenerator(int random_seed =0)
 		GEM2_real[2] += zcoordinate2;
 		GEM2_gem[2] += zcoordinate2;
 		
-		// Translate
-		x_gem_val[0] = x_real_val[0];
-		x_gem_val[1] = x_real_val[1] + x_offset[1];
-		x_gem_val[2] = x_real_val[2] + x_offset[2];
-		
-		y_gem_val[0] = y_real_val[0];
-		y_gem_val[1] = y_real_val[1] + y_offset[1];
-		y_gem_val[2] = y_real_val[2] + y_offset[2];
-	
 		// Return GEM values to individual vectors (x0,x1,x2)
 		x_gem_val[0] = x_real_val[0];
 		y_gem_val[0] = y_real_val[0];
@@ -166,7 +157,14 @@ void trackgenerator(int random_seed =0)
 		x_gem_val[2] = GEM2_gem[0];
 		y_gem_val[2] = GEM2_gem[1];
 		z_gem_val[2] = GEM2_gem[2];
-			
+		
+		// Translate
+		x_gem_val[1] += x_offset[1];
+		x_gem_val[2] += x_offset[2];
+		
+		y_gem_val[1] += y_offset[1];
+		y_gem_val[2] += y_offset[2];
+		
 		// Add resolution factor
 		for (int j=0;j<3;j++)
 		{
