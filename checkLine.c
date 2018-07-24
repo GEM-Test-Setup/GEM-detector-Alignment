@@ -1,6 +1,6 @@
 //written by Daniel DeLayo
 #include <iostream>
-#include "linalg.h"
+//#include "linalg.h"
 
 bool isSane(Point A, Point B, Point C)
 {    
@@ -27,7 +27,7 @@ void clearVis()
 }
 
 
-void initVisualize(Point origin, double **planes)
+void initVisualize(const Point &origin, double **planes)
 {
     if (init)
     {
@@ -75,7 +75,7 @@ void initVisualize()
 }
 
 
-void visualize(Point A, Point B, Point C)
+void visualize(const Point &A, const Point &B, const Point &C)
 {
     if (!init)
     {
@@ -117,7 +117,7 @@ void visualize(Point A, Point B, Point C)
     visCan->Draw();
 }
 
-void visualize(Track t)
+void visualize(const Track &t)
 {
     visualize(t[0], t[1], t[2]);
 }

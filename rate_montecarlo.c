@@ -1,14 +1,12 @@
-#include "linalg.h"
+//#include "linalg.h"
 #include "TF1.h"
-
+#include <ctime>
 TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x) * TMath::Sin(x)", 0, pi/2);
-TRandom *myRand = new TRandom2();
+TRandom *myRand = new TRandom3(std::time(0));
 
-Track getTrack(Double_t width, Double_t length, Double_t zSepTopMid, Double_t zSepMidBot)
+Track getTrack(const Point &offset, Double_t width, Double_t length, Double_t zSepTopMid, Double_t zSepMidBot)
 {
 
-    gROOT->ProcessLine(".L checkLine.c");
-    Point o(0,0,0);
     double **planes = new double*[3];
     for (int i = 0; i < 3; i++)
     {
@@ -31,23 +29,27 @@ Track getTrack(Double_t width, Double_t length, Double_t zSepTopMid, Double_t zS
     v = multiply(getRotation(0,0, phiRand), v);
     Double_t hitX = v[0] + topHitX;
     Double_t hitY = v[1] + topHitY;
-    Point A(topHitX, topHitY, planes[0][0]);
-    Point C(hitX, hitY, planes[2][0]);
+    Point A(topHitX+offset.x, topHitY+offset.y, planes[0][0]);
+    Point C(hitX+offset.x, hitY+offset.y, planes[2][0]);
     Double_t xSlope = (C.x - A.x) / (C.z - A.z);
     Double_t ySlope = (C.y - A.y) / (C.z - A.z);
     Double_t zOff = planes[1][0] - A.z;
     Point B(A.x + xSlope*zOff, A.y + ySlope*zOff, planes[1][0]);
-    //visualize(A, B, C);
     Track t(A, B, C);
     return t;
 }
 
-Track getGoodTrack(Double_t width, Double_t length, Double_t zSepTopMid, Double_t zSepMidBot)
+Track getGoodTrack(const Point &offset, Double_t width, Double_t length, Double_t zSepTopMid, Double_t zSepMidBot)
 {
     Track good;
     do {
-        good = getTrack(width, length, zSepTopMid, zSepMidBot);
-    } while(!(good[2].x >= 0 && good[2].x <= length && good[2].y >= 0 && good[2].y <= width));
+        good = getTrack(offset, width, length, zSepTopMid, zSepMidBot);    
+    } while(!(good[2].x >= offset.x && good[2].x <= offset.x+length && good[2].y >= offset.y && good[2].y <= offset.y+width));
+    std::cout << "Found good track!" << std::endl;
+    //visualize(good);
+    printPoint(good[0]);
+    printPoint(good[1]);
+    printPoint(good[2]);
     return good;
 }
 
@@ -59,7 +61,7 @@ void rate_montecarlo()
     //cos^2 theta distribution
     Double_t width = 25; //cm
     Double_t length = 25; //cm
-    Double_t seperation = 70; //cm
+    Double_t seperation = 92; //cm
 
     Point o(0,0,0);
     double **planes = new double*[3];

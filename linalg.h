@@ -106,12 +106,18 @@ struct Track
     Point points[3];
 
     Track() {}
+    
+    Track(const Track &T)
+    {
+        for (int i = 0; i < 3; i++)
+            points[i] = T[i];
+        
+    }
     Track(const Point &A, const Point &B, const Point &C)
     {
-
-        points[0] = Point(A); 
-        points[1] = Point(B); 
-        points[2] = Point(C);
+        points[0] = A;
+        points[1] = B;
+        points[2] = C;
     }
 
     Track(const Vector &A, const Vector &B, const Vector &C)

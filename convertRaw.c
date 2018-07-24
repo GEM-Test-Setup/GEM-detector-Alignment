@@ -17,6 +17,8 @@ const Double_t dQ = 2;
 //TODO Propagate to find dQ?
 //FIXME justify value for dQ
 
+const int signalHalfWidth = 15; //in bins
+
 const int nbins = 256;
 const int minX = -5;
 const int maxX = 5;
@@ -24,6 +26,17 @@ TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
 //TF1* gaus = new TF1("mygaus", "gaus", minX, maxX);
 TFile in("raw_gem.root");
 bool noOffsets = false;
+//FIXME better storage
+const int total = 100;
+
+std::string concat(const char* str1, int index)
+{
+    std::string str = "";
+    str += str1;
+    std::stringstream ss;
+    ss << str << index;
+    return ss.str();
+}
 
 std::string concat(std::string str, int index)
 {
@@ -42,27 +55,29 @@ std::string concat(const char* str1, const char* str2)
 
 TH1D* getRandHist(double mean, std::string name)
 { 
-    gaus->SetParameters(1, mean, .3); //amplitude, xmean, xsigma
+    gaus->SetParameters(1, mean, .1); //amplitude, xmean, xsigma
     TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussian + Noise", nbins, minX, maxX);
-    raw->FillRandom("mygaus", 100000);
+    raw->FillRandom("mygaus", 2000);
     for (int j = 0; j < raw->GetSize(); j++)
     {
-        raw->AddBinContent(j, rand()%100); 
+        raw->AddBinContent(j, rand()%50); 
     }
     return raw;
 }
 
 TH1D* getRandHist(const double* meanArr, const double* amplArr, int len, std::string name)
 {
-    TH1D* raw = new TH1D(name.c_str(), "Contains a Gaussian", nbins, minX, maxX);
+    TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussians + Noise", nbins, minX, maxX);
+    //signals
     for (int i = 0; i < len; i++)
     {
-        gaus->SetParameters(amplArr[i], meanArr[i], .3); //amplitude, xmean, xsigma
-        raw->FillRandom("mygaus", amplArr[i] * 100000);
+        gaus->SetParameters(1, meanArr[i], .1); //amplitude, xmean, xsigma
+        raw->FillRandom("mygaus", amplArr[i] * 2000);
     }
+    //noise
     for (int j = 0; j < raw->GetSize(); j++)
     {
-        raw->AddBinContent(j, rand()%100); 
+        raw->AddBinContent(j, rand()%50); 
     }
     return raw; 
 }
@@ -144,7 +159,8 @@ bool histSort(const TH1D* left, const TH1D* right)
     return scoreHist(left) < scoreHist(right);
 }
 
-const double peakSigma = 18;
+const double peakSigma = 6;
+const double minCut = .8;
 void splitHists(std::vector <TH1D*>* hists)
 {
     if (hists->size() <= 0)
@@ -153,11 +169,11 @@ void splitHists(std::vector <TH1D*>* hists)
         return;
     }
     
-    int nPeaks = hists->at(0)->ShowPeaks(peakSigma, "goff", 0.4);
+    int nPeaks = hists->at(0)->ShowPeaks(peakSigma, "goff", minCut);
     int nentries = hists->size();
     for (int i = 0; i < nentries; i++)
     {
-        int nPeaksCheck = hists->at(i)->ShowPeaks(peakSigma, "nodraw", 0.4);
+        int nPeaksCheck = hists->at(i)->ShowPeaks(peakSigma, "nodraw", minCut);
         std::cout << "Number of peaks: " << nPeaksCheck << std::endl;
         if (nPeaksCheck != nPeaks)
         {
@@ -229,13 +245,13 @@ void splitHists(std::vector <TH1D*>* hists)
             }
             else if (j < globHists[k].size()-1 && TMath::Abs(scoreHist(globHists[k].at(j)) - scoreHist(globHists[k].at(j+1))) < sigLevel)
             {
-                std::cerr << "Skipping. Two hisograms in the same dimension are too close to justify resolving ambiguity" << std::endl;
+                std::cerr << "Skipping. Two histograms in the same dimension are too close to justify resolving ambiguity" << std::endl;
                 std::cerr << "Hist 1: " << scoreHist(globHists[k].at(j)) << std::endl;
                 std::cerr << "Hist 2: " << scoreHist(globHists[k].at(j+1)) << std::endl;
                 
                 TCanvas *can = new TCanvas();
                 globHists[k].at(j)->DrawCopy();
-                TCanvas *can = new TCanvas();
+                can = new TCanvas();
                 globHists[k].at(j+1)->DrawCopy();
                 hists->clear();
                 return;
@@ -299,7 +315,14 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     //Use charge-weighted integral divided by integral to find centroid 
     Double_t wIntegral = 0;
     Double_t Integral = 0;
-    for (int k = 0; k <= hist->GetSize(); k++)
+    //FIXME assume signal is higher than the noise
+   
+    int presumedMiddle = hist->GetMaximumBin();
+    int start = presumedMiddle - signalHalfWidth;
+    int stop = presumedMiddle + signalHalfWidth;
+    start = (start < 0)? 0 : start;
+    stop = (stop > hist->GetSize())? hist->GetSize() : stop;
+    for (int k = start; k <= stop; k++)
     {
         wIntegral += k*hist->GetBinContent(k);
         Integral += hist->GetBinContent(k);   
@@ -314,8 +337,8 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
             dIntegral/pow(Integral,2)) * binIndex;
     
 
-    TCanvas *c = new TCanvas();
-    hist->DrawCopy();
+    //TCanvas *c = new TCanvas();
+    //hist->DrawCopy();
     Double_t up = hist->GetXaxis()->GetBinUpEdge((int)binIndex);
     Double_t low = hist->GetXaxis()->GetBinLowEdge((int)binIndex);
     //convert dBinIndex into x
@@ -325,6 +348,8 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
 }
 void makeTestData()
 {
+    gROOT->ProcessLine(".L rate_montecarlo.c");
+    
     TFile conf("offsets.root", "RECREATE");
     Double_t xTrans, yTrans, zTrans, xRot, yRot, zRot;
     Double_t uxTrans, uyTrans, uzTrans, uxRot, uyRot, uzRot;
@@ -351,12 +376,12 @@ void makeTestData()
     uzRot = degToRad(0);
     
     treeConf->Fill();
-    xTrans = 0.05;
-    yTrans = 0.05;
-    zTrans = 0.05;
-    xRot = degToRad(180.01);
-    yRot = degToRad(0.005);
-    zRot = degToRad(0.03);
+    //xTrans = 0.05;
+    //yTrans = 0.05;
+    //zTrans = 0.05;
+    //xRot = degToRad(180.01);
+    //yRot = degToRad(0.005);
+    //zRot = degToRad(0.03);
     uxTrans = 0.2;
     uyTrans = 0.2;
     uzTrans = 0.2;
@@ -368,8 +393,8 @@ void makeTestData()
 
     treeConf->Write();
     conf.Close();
-    
-    TFile* rawFile = new TFile("raw_gem.root", "RECREATE"); 
+     
+    TFile rawFile("raw_gem.root", "RECREATE"); 
     
     //Split and create n tracks for n peaks, only leaving in relevant parts
     //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
@@ -377,18 +402,17 @@ void makeTestData()
     //FIXME this sucks but it works
     TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x) * TMath::Sin(x)", 0, pi/2);
     TRandom *rand = new TRandom2();
-    const int total = 100;
+    Point o(-5, -5, 0);
     for (int i = 0; i < total; i++)
     {
-           
+        Track t = getGoodTrack(o, 10, 10, 100, 100);          
+        getRandHist(t[0].x, concat("topX", i).c_str())->Write();
+        getRandHist(t[0].y, concat("topY", i).c_str())->Write();
+        getRandHist(t[1].x, concat("midX", i).c_str())->Write();
+        getRandHist(t[1].y, concat("midY", i).c_str())->Write();
+        getRandHist(t[2].x, concat("botX", i).c_str())->Write();
+        getRandHist(t[2].y, concat("botY", i).c_str())->Write(); 
     }
-    
-    getRandHist(-4.8, "topX1")->Write();
-    getRandHist(4.8, "topY1")->Write();
-    getRandHist(0, "midX1")->Write();
-    getRandHist(0, "midY1")->Write();
-    getRandHist(4.8, "botX1")->Write();
-    getRandHist(-4.8, "botY1")->Write(); 
     
     double* means = new double[2];
     double* ampl = new double[2];
@@ -421,7 +445,7 @@ void makeTestData()
     means[1] = 4;
     getRandHist(means, ampl, 2, "botY0")->Write(); 
     
-    rawFile->Close();
+    rawFile.Close();
 
 
     std::cout << "generated " << __LINE__ << std::endl;
@@ -490,7 +514,7 @@ void convertRaw(bool skipOffsets=false)
 
     Track *tr;
     res->Branch("tracks", "Track", &tr);
-    const int nentries = 2;
+    const int nentries = total;
     for (int j = 0; j < nentries; j++)
     {
         std::vector< TH1D* >* raw = getHists(j);
@@ -512,7 +536,7 @@ void convertRaw(bool skipOffsets=false)
                 uncert[i][0] = ux;
                 uncert[i][1] = uy;
                 uncert[i][2] = uz;
-                std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
+                //std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
                 Vector v(x[i], y[i], z[i]);
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
@@ -524,15 +548,18 @@ void convertRaw(bool skipOffsets=false)
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;
-                std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
+                //std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
             }
 
             Point A(x[0],y[0],z[0], uncert[0][0], uncert[0][1], uncert[0][2]);
             Point B(x[1],y[1],z[1], uncert[1][0], uncert[1][1], uncert[1][2]);
             Point C(x[2],y[2],z[2], uncert[2][0], uncert[2][1], uncert[2][2]);
-            //printPoint(A); 
-            //printPoint(B); 
-           // printPoint(C); 
+            std::cout << "A: " << std::endl;
+            printPoint(A); 
+            std::cout << "B: " << std::endl;
+            printPoint(B); 
+            std::cout << "C: " << std::endl;
+            printPoint(C); 
             
             topPoints.push_back(A);
             midPoints.push_back(B);
@@ -574,6 +601,7 @@ void convertRaw(bool skipOffsets=false)
             }
         }
     } 
+    std::cout << "Successfully processed " << res->GetEntries() << " / " << total << std::endl;
     TFile out("tracks.root", "RECREATE");
     res->Write();
     out.Close();
