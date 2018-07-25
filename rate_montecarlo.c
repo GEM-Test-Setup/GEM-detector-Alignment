@@ -47,9 +47,9 @@ Track getGoodTrack(const Point &offset, Double_t width, Double_t length, Double_
     } while(!(good[2].x >= offset.x && good[2].x <= offset.x+length && good[2].y >= offset.y && good[2].y <= offset.y+width));
     std::cout << "Found good track!" << std::endl;
     //visualize(good);
-    printPoint(good[0]);
-    printPoint(good[1]);
-    printPoint(good[2]);
+    //printPoint(good[0]);
+    //printPoint(good[1]);
+    //printPoint(good[2]);
     return good;
 }
 

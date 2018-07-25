@@ -17,7 +17,7 @@ const Double_t dQ = 2;
 //TODO Propagate to find dQ?
 //FIXME justify value for dQ
 
-const int signalHalfWidth = 15; //in bins
+const int signalHalfWidth = 12; //in bins
 
 const int nbins = 256;
 const int minX = -5;
@@ -52,36 +52,6 @@ std::string concat(const char* str1, const char* str2)
     res += str2;
     return res;
 }
-
-TH1D* getRandHist(double mean, std::string name)
-{ 
-    gaus->SetParameters(1, mean, .1); //amplitude, xmean, xsigma
-    TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussian + Noise", nbins, minX, maxX);
-    raw->FillRandom("mygaus", 2000);
-    for (int j = 0; j < raw->GetSize(); j++)
-    {
-        raw->AddBinContent(j, rand()%50); 
-    }
-    return raw;
-}
-
-TH1D* getRandHist(const double* meanArr, const double* amplArr, int len, std::string name)
-{
-    TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussians + Noise", nbins, minX, maxX);
-    //signals
-    for (int i = 0; i < len; i++)
-    {
-        gaus->SetParameters(1, meanArr[i], .1); //amplitude, xmean, xsigma
-        raw->FillRandom("mygaus", amplArr[i] * 2000);
-    }
-    //noise
-    for (int j = 0; j < raw->GetSize(); j++)
-    {
-        raw->AddBinContent(j, rand()%50); 
-    }
-    return raw; 
-}
-
 
 
 std::vector< TH1D*>* getHists(int index)
@@ -159,8 +129,24 @@ bool histSort(const TH1D* left, const TH1D* right)
     return scoreHist(left) < scoreHist(right);
 }
 
-const double peakSigma = 6;
-const double minCut = .8;
+std::vector<double> getPeaks(TH1D* hist)
+{
+    int riseWidth = signalHalfWidth/3;
+    int riseHeight = 100;
+    std::vector<double> peaks;
+    for (int i = 0; i < hist->GetSize()-riseWidth; i++)
+    {   
+        if (hist->GetBinContent(i+riseWidth) - hist->GetBinContent(i) > riseHeight)
+        {
+            peaks.push_back(i);
+            i+= signalHalfWidth;
+        }
+    }
+    return peaks;
+}
+
+
+
 void splitHists(std::vector <TH1D*>* hists)
 {
     if (hists->size() <= 0)
@@ -169,11 +155,14 @@ void splitHists(std::vector <TH1D*>* hists)
         return;
     }
     
-    int nPeaks = hists->at(0)->ShowPeaks(peakSigma, "goff", minCut);
+    std::vector< std::vector< double > > peaks;
+    peaks.push_back(getPeaks(hists->at(0)));
+    int nPeaks = peaks[0].size();;
     int nentries = hists->size();
-    for (int i = 0; i < nentries; i++)
+    for (int i = 1; i < nentries; i++)
     {
-        int nPeaksCheck = hists->at(i)->ShowPeaks(peakSigma, "nodraw", minCut);
+        peaks.push_back(getPeaks(hists->at(i)));
+        int nPeaksCheck = peaks[i].size();;
         std::cout << "Number of peaks: " << nPeaksCheck << std::endl;
         if (nPeaksCheck != nPeaks)
         {
@@ -204,18 +193,17 @@ void splitHists(std::vector <TH1D*>* hists)
     {
         int last = 0;
         std::vector< TH1D* > tHists;
-        TList *functions = hists->at(i)->GetListOfFunctions();
-        TPolyMarker *peaks = (TPolyMarker*)functions->FindObject("TPolyMarker");
+        std::vector< double > *localPeaks = &peaks[i];
+        nPeaks = localPeaks->size();
         for (int j = 0; j < nPeaks; j++)
         {
             std::string del = "_split_";
             TH1D* splitH = new TH1D(concat(hists->at(i)->GetName(), concat(del, j).c_str()).c_str(), "Contains a gaussian (split)", nbins, minX, maxX);
 
-            Double_t splitX = ((nPeaks-1 == j)? max : (peaks->GetX()[j] + peaks->GetX()[j+1])/2.0 );
-            int splitBin = hists->at(i)->GetXaxis()->FindBin(splitX);
-            std::cout << "Copying from bin " << last << " to bin " << splitBin << std::endl;
-            std::cout << "For peak index " << j << ", out of " << nPeaks << std::endl;
-            std::cout << "And peak x: " << peaks->GetX()[j] << std::endl;
+            int splitBin = ((nPeaks-1 == j)? splitH->GetSize() : (localPeaks->at(j) + localPeaks->at(j+1))/2.0 );
+            //std::cout << "Copying from bin " << last << " to bin " << splitBin << std::endl;
+            //std::cout << "For peak index " << j << ", out of " << nPeaks << std::endl;
+            //std::cout << "And peak x: " << localPeaks->at(j) << std::endl;
             for (int k = last; k < splitBin; k++)
             {
                 splitH->AddBinContent(k, hists->at(i)->GetBinContent(k));    
@@ -232,7 +220,7 @@ void splitHists(std::vector <TH1D*>* hists)
     }
     //Plots must be meaningfully correlated to justify recombining
     //pulse heights are correlated in the same gem but not across
-    const Double_t sigLevel = 100;
+    const Double_t sigLevel = 20;
     for (int j = 0; j < globHists[0].size(); j++)
     {
         for (int k = 0; k < 6; k++)
@@ -332,6 +320,8 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     }
     //Propagate uncertainty in measurement
     //dWeighted and dIntegral are both already squared
+    std::cout << "wInt: " << wIntegral << std::endl;
+    std::cout << "Int: " << Integral << std::endl;
     Double_t binIndex = wIntegral / Integral;
     Double_t dBinIndex = sqrt(dWeightedIntegral/(pow(wIntegral,2)) +
             dIntegral/pow(Integral,2)) * binIndex;
@@ -346,111 +336,7 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     //lower x bound + fractionalpart * binDelta
     return low + ((binIndex-((int)binIndex)) * (up-low));
 }
-void makeTestData()
-{
-    gROOT->ProcessLine(".L rate_montecarlo.c");
-    
-    TFile conf("offsets.root", "RECREATE");
-    Double_t xTrans, yTrans, zTrans, xRot, yRot, zRot;
-    Double_t uxTrans, uyTrans, uzTrans, uxRot, uyRot, uzRot;
 
-    TTree *treeConf = new TTree("T", "Gem Offsets. Top, Mid, Bot. Rotations are about given axis.");
-    treeConf->Branch("gems.xTrans", &xTrans);
-    treeConf->Branch("gems.yTrans", &yTrans);
-    treeConf->Branch("gems.zTrans", &zTrans);
-    treeConf->Branch("gems.xRot", &xRot);
-    treeConf->Branch("gems.yRot", &yRot);
-    treeConf->Branch("gems.zRot", &zRot);
-    treeConf->Branch("gems.uxTrans", &uxTrans);
-    treeConf->Branch("gems.uyTrans", &uyTrans);
-    treeConf->Branch("gems.uzTrans", &uzTrans);
-    treeConf->Branch("gems.uxRot", &uxRot);
-    treeConf->Branch("gems.uyRot", &uyRot);
-    treeConf->Branch("gems.uzRot", &uzRot);
-
-    uxTrans = 0.2;
-    uyTrans = 0.2;
-    uzTrans = 0.2;
-    uxRot = degToRad(0);
-    uyRot = degToRad(0);
-    uzRot = degToRad(0);
-    
-    treeConf->Fill();
-    //xTrans = 0.05;
-    //yTrans = 0.05;
-    //zTrans = 0.05;
-    //xRot = degToRad(180.01);
-    //yRot = degToRad(0.005);
-    //zRot = degToRad(0.03);
-    uxTrans = 0.2;
-    uyTrans = 0.2;
-    uzTrans = 0.2;
-    uxRot = degToRad(0.1);
-    uyRot = degToRad(0.1);
-    uzRot = degToRad(0.1);
-    treeConf->Fill(); 
-    treeConf->Fill();
-
-    treeConf->Write();
-    conf.Close();
-     
-    TFile rawFile("raw_gem.root", "RECREATE"); 
-    
-    //Split and create n tracks for n peaks, only leaving in relevant parts
-    //See keyboard analogy. Not 2d data but 2 1d, distinguish as X peakheight matches Y peakheight
-    
-    //FIXME this sucks but it works
-    TF1* dist = new TF1("cossqrd", "TMath::Cos(x) * TMath::Cos(x) * TMath::Sin(x)", 0, pi/2);
-    TRandom *rand = new TRandom2();
-    Point o(-5, -5, 0);
-    for (int i = 0; i < total; i++)
-    {
-        Track t = getGoodTrack(o, 10, 10, 100, 100);          
-        getRandHist(t[0].x, concat("topX", i).c_str())->Write();
-        getRandHist(t[0].y, concat("topY", i).c_str())->Write();
-        getRandHist(t[1].x, concat("midX", i).c_str())->Write();
-        getRandHist(t[1].y, concat("midY", i).c_str())->Write();
-        getRandHist(t[2].x, concat("botX", i).c_str())->Write();
-        getRandHist(t[2].y, concat("botY", i).c_str())->Write(); 
-    }
-    
-    double* means = new double[2];
-    double* ampl = new double[2];
-    
-    ampl[0] = 0.8;
-    ampl[1] = 1.2;
-    
-    means[0] = -2;
-    means[1] = 4;
-    getRandHist(means, ampl, 2, "topX0")->Write();
-    means[0] = 0;
-    means[1] = 4;
-    getRandHist(means, ampl, 2, "topY0")->Write();
-    
-    ampl[0] = 0.8;
-    ampl[1] = 1.2;
-    means[0] = -3;
-    means[1] = 3;
-    getRandHist(means, ampl, 2, "midX0")->Write();
-    means[0] = 0;
-    means[1] = 4;
-    getRandHist(means, ampl, 2, "midY0")->Write();
-    
-    ampl[0] = 0.8;
-    ampl[1] = 1.2;
-    means[0] = -4; 
-    means[1] = 2;
-    getRandHist(means, ampl, 2, "botX0")->Write();
-    means[0] = 0;
-    means[1] = 4;
-    getRandHist(means, ampl, 2, "botY0")->Write(); 
-    
-    rawFile.Close();
-
-
-    std::cout << "generated " << __LINE__ << std::endl;
-}
-//TODO implement ability to form 1D tracks then use energy distance to form 2D tracks
 void convertRaw(bool skipOffsets=false)
 {
     noOffsets = skipOffsets;
@@ -458,8 +344,6 @@ void convertRaw(bool skipOffsets=false)
     gROOT->ProcessLine(".L checkLine.c");
 
     std::cout << "Number of bins: " << nbins << std::endl;
-    
-    makeTestData();
     
     //Fille offset arrays (12 Double_t per gem)
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
@@ -536,7 +420,7 @@ void convertRaw(bool skipOffsets=false)
                 uncert[i][0] = ux;
                 uncert[i][1] = uy;
                 uncert[i][2] = uz;
-                //std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
+                std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
                 Vector v(x[i], y[i], z[i]);
                 //Vector v(1, 2, 3);
                 v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
@@ -548,7 +432,7 @@ void convertRaw(bool skipOffsets=false)
                 x[i] = v[0];
                 y[i] = v[1];
                 z[i] = v[2] + 200 - i*100;
-                //std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
+                std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
             }
 
             Point A(x[0],y[0],z[0], uncert[0][0], uncert[0][1], uncert[0][2]);
@@ -565,7 +449,7 @@ void convertRaw(bool skipOffsets=false)
             midPoints.push_back(B);
             botPoints.push_back(C);
         }
-
+        //TODO n^3 (but for a small n this is fine)
         for (int t = 0; t < topPoints.size(); t++)
         {
             std::vector <Track> options;
