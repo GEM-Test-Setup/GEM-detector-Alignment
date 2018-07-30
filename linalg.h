@@ -74,33 +74,33 @@ Point makePoint(const Vector &v)
     return p;
 }
 
-/*struct Track1D
+struct Track1D
 {
     //TODO implement a track in a single dimension
     Double_t vals[3];
     Double_t uncert[3];
     Double_t energy[3];
     
-    Track1D &operator[](const int index)
+    Double_t &operator[](const int index)
     {   
         return vals[index];
     }
-    const Track1D &operator[](const int index) const
+    const Double_t &operator[](const int index) const
     {   
         return vals[index];
     }
 };
 
-Double_t getEnergyDist(Track1D x, Track1D y)
+Double_t getEnergyDist(const Track1D &x, const Track1D &y)
 {
     Double_t dist = 0;
     for (int i = 0; i < 3; i++)
     {
-        dist += pow(x.energy-y.energy,2);   
+        dist += pow(x.energy[i]-y.energy[i],2);   
     }
     return sqrt(dist);
 }
-*/
+
 struct Track
 {
     Point points[3];
@@ -127,6 +127,15 @@ struct Track
         points[2] = makePoint(C);
     }
 
+    Track makeTrack(const Track1D &x, const Track1D &y, const Track1D &z)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            Point p(x[i], y[i], z[i], x.uncert[i], y.uncert[i], z.uncert[i]);     
+            points[i] = p;
+        }
+    }
+
     Point &operator[](const int index)
     {   
         return points[index];
@@ -136,7 +145,6 @@ struct Track
         return points[index];
     }
 };
-
 
 
 struct Matrix{

@@ -10,24 +10,34 @@
 #include <cmath>
 
 //const Double_t resolution = (10.0/256.0)/sqrt(12.0);
-
+//
 //dQ uncertainty in a channel (assumed the same for every channel)
 //Result value ranges from 0-2^16 (16 bit), QDC dependent
-const Double_t dQ = 2;
+const Double_t dQ = 3;
 //TODO Propagate to find dQ?
 //FIXME justify value for dQ
 
-const int signalHalfWidth = 12; //in bins
+
+const int nGemReadouts = 6;
+const int nGems = 3;
+
+//Half the width of the expected signal (in strips/bins)
+const int signalHalfWidth = 2;
+//The minimum signal. Double this can be split into 2 hits.
+const double signalMinIntegral = 1700; 
+//Any two energy peaks with a difference less than this can be correlated 
+const Double_t sigLevel = 200;
+
 
 const int nbins = 256;
-const int minX = -5;
-const int maxX = 5;
+const double minX = -5;
+const double maxX = 5;
 TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
 //TF1* gaus = new TF1("mygaus", "gaus", minX, maxX);
 TFile in("raw_gem.root");
 bool noOffsets = false;
 //FIXME better storage
-const int total = 100;
+const int total = 200;
 
 std::string concat(const char* str1, int index)
 {
@@ -56,7 +66,7 @@ std::string concat(const char* str1, const char* str2)
 
 std::vector< TH1D*>* getHists(int index)
 {
-    std::vector < TH1D* >* arr = new std::vector<TH1D*>;
+    std::vector < TH1D* > *arr = new std::vector < TH1D* > [nGemReadouts];
     //FIXME there has to be a better way of doing this 
     //(I blame root not liking arrays of TH1)
     arr->push_back((TH1D*)in.Get(concat("topX", index).c_str()));
@@ -120,7 +130,26 @@ std::vector< TH1D*> sort(std::vector< TH1D* > toSort)
 
 Double_t scoreHist(const TH1D* hist)
 {
-    return hist->GetMaximum();
+    return scoreHist(hist, hist->GetMaximumBin());
+}
+
+Double_t scoreHist(const TH1D* hist, double center)
+{
+    return scoreHist(hist, hist->GetXaxis()->FindBin(center));
+}
+
+Double_t scoreHist(const TH1D* hist, int centerBin)
+{
+    Double_t score = 0;
+    int start = centerBin - signalHalfWidth;
+    int stop = centerBin + signalHalfWidth;
+    start = (start < 0)? 0 : start;
+    stop = (stop > hist->GetSize())? hist->GetSize() : stop;
+    for (int k = start; k <= stop; k++)
+    {
+        score += hist->GetBinContent(k);   
+    }
+    return score;
 }
 
 bool histSort(const TH1D* left, const TH1D* right)
@@ -129,149 +158,185 @@ bool histSort(const TH1D* left, const TH1D* right)
     return scoreHist(left) < scoreHist(right);
 }
 
-std::vector<double> getPeaks(TH1D* hist)
+std::vector<int> getPeaks(TH1D* hist)
 {
-    int riseWidth = signalHalfWidth/3;
+    int riseWidth = signalHalfWidth;
     int riseHeight = 100;
-    std::vector<double> peaks;
+    std::vector<int> peaks;
     for (int i = 0; i < hist->GetSize()-riseWidth; i++)
     {   
-        if (hist->GetBinContent(i+riseWidth) - hist->GetBinContent(i) > riseHeight)
+        for (int j = 0; j < riseWidth; j++)
         {
-            peaks.push_back(i);
-            i+= signalHalfWidth;
+            if (hist->GetBinContent(i+j) - hist->GetBinContent(i) > riseHeight)
+            {
+                peaks.push_back(i+j);
+                i+= j+signalHalfWidth;
+                break;
+            }
         }
     }
     return peaks;
 }
 
-
-
-void splitHists(std::vector <TH1D*>* hists)
+void getPermutations(std::vector< TH1D*>* start, int depth, std::vector< std::vector <TH1D*>* >* perms)
 {
+    std::cout << "Permuting with depth " << depth << std::endl;
+    std::cout << "Max Depth: " << start[0].size() << std::endl;
+    perms->push_back(start);
+    if (depth == start[0].size())
+    {
+        //std::cout << "Base case" << std::endl;
+        return;
+    }
+    for (int i = depth; i < start[0].size()-1; i++)
+    {
+        for (int j = 1; i+j < start[0].size(); j++)
+        {
+            for (int k = 0; k < nGems; k++)
+            {
+                if (TMath::Abs(scoreHist(start[2*k].at(i)) - scoreHist(start[2*k+1].at(i+j))) < sigLevel &&
+                TMath::Abs(scoreHist(start[2*k].at(i+j)) - scoreHist(start[2*k+1].at(i))) < sigLevel) 
+                {
+                    std::vector< TH1D* >* toAdd = new std::vector< TH1D* >[nGemReadouts];
+                    for (int m = 0; m < nGems; m++)
+                    {
+                        for (int l = 0; l < start[2*m].size(); l++)
+                        {
+                            if (k == m && l == i)
+                            {
+                                toAdd[2*m].push_back(start[2*m].at(i+j));
+                                toAdd[2*m+1].push_back(start[2*m+1].at(i));
+                            } 
+                            else if (k == m && l == i+j)
+                            {
+                                toAdd[2*m].push_back(start[2*m].at(i));
+                                toAdd[2*m+1].push_back(start[2*m+1].at(i+j));
+                            }
+                            else
+                            {
+                                toAdd[2*m].push_back(start[2*m].at(l));
+                                toAdd[2*m+1].push_back(start[2*m+1].at(l));
+                            }
+                        }
+                    }
+                    //std::cout << "Added at depth: " << depth << std::endl;
+                    getPermutations(toAdd, i+1, perms);
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+std::vector < std::vector< TH1D* >* >* splitHists(std::vector <TH1D*>* hists)
+{
+    std::vector< std::vector < TH1D* >* >* permutations = new std::vector< std::vector< TH1D* >* >;
+    std::vector< TH1D* >* globHists = new std::vector< TH1D*>[nGemReadouts];
+
     if (hists->size() <= 0)
     {
         std::cerr << "Invalid histogram size" << std::endl;
-        return;
+        return permutations;
     }
-    
-    std::vector< std::vector< double > > peaks;
-    peaks.push_back(getPeaks(hists->at(0)));
-    int nPeaks = peaks[0].size();;
-    int nentries = hists->size();
-    for (int i = 1; i < nentries; i++)
+
+    std::vector< std::vector< int > > peaks;
+    // FIXME can multiplicity be justified in the data? 
+    // Is this a powerful enough model>
+    std::vector< std::vector< int > > multiplicity;
+    //peaks.push_back(getPeaks(hists->at(0)));
+    int nPeaks = 0;//peaks[0].size();
+
+    for (int i = 0; i < nGemReadouts; i++)
     {
+        std::vector < int > peakMult;
         peaks.push_back(getPeaks(hists->at(i)));
         int nPeaksCheck = peaks[i].size();;
-        std::cout << "Number of peaks: " << nPeaksCheck << std::endl;
-        if (nPeaksCheck != nPeaks)
+        std::cout << "Number of distinct peaks: " << nPeaksCheck << std::endl;
+        // there are two hits in similar enough xy positions that it
+        // appears to be one peak of double integral
+        // First, resolve cruedly for equal heights. Then, resolve better
+
+        int nMultPeaks = 0;
+        for (int j = 0; j < peaks[i].size(); j++)
         {
-            TCanvas *c = new TCanvas();
-            hists->at(i)->DrawCopy();
-            std::cerr << "Skipping entry due to unexpected number of peaks in " << hists->at(i)->GetName() << std::endl;
-            std::cerr << "expected peaks: " << nPeaks << ", " << "seen peaks: " << nPeaksCheck << std::endl;
-            hists->clear();
-            return;
+            peakMult.push_back(
+                    1//scoreHist(hists->at(i), peaks[i][j]) / signalMinIntegral
+                    );
+            //std::cout << "Peak " << i << ", " << j << ": " << peaks[i][j] << std::endl;
+            nMultPeaks += peakMult[j];
         }
+        if (i == 0)
+            nPeaks = nMultPeaks;
+        if (nMultPeaks != nPeaks)
+        {
+            //TCanvas *c = new TCanvas();
+            //hists->at(i)->DrawCopy();
+            std::cerr << "Skipping entry due to unexpected number of peaks in " << hists->at(i)->GetName() << std::endl;
+            std::cerr << "expected peaks: " << nPeaks << ", " << "seen peaks: " << nPeaksCheck << " (" << nMultPeaks << ")" <<  std::endl;
+            return permutations;
+        }
+        multiplicity.push_back(peakMult);
+        //std::cout << "Number of hit-peaks: " << nMultPeaks << std::endl;
     }
+
     //validation complete. Begin splitting
-    if (nPeaks == 1) return; 
-    else if (nPeaks <= 0)
+    if (nPeaks <= 0)
     {
         std::cerr << "Skipping due to no peaks found. anywhere." << std::endl;
-        hists->clear();
-        return;
+        return permutations;
     }
-    if (noOffsets)
+    if (nPeaks != 1 && noOffsets)
     {
-        std::cout << "Histogram splitting not possible without offsets" << std::endl;
-        hists->clear();
-        return;
+        std::cerr << "Only single tracks are able to be resolved without offsets" << std::endl;
+        return permutations;
     }
-    std::vector< TH1D* > globHists[nentries];
-    for (int i = 0; i < nentries; i++)
+    for (int k = 0; k < nGemReadouts; k++)
     {
         int last = 0;
+        std::vector< int >* localPeaks = &peaks[k];
         std::vector< TH1D* > tHists;
-        std::vector< double > *localPeaks = &peaks[i];
-        nPeaks = localPeaks->size();
-        for (int j = 0; j < nPeaks; j++)
+        //int multSum = 0;
+        std::cout << "localPeaks size: " << localPeaks->size() << std::endl;
+        for (int i = 0; i < localPeaks->size(); i++)
         {
+            //multSum += localMult->at(i)-1;
             std::string del = "_split_";
-            TH1D* splitH = new TH1D(concat(hists->at(i)->GetName(), concat(del, j).c_str()).c_str(), "Contains a gaussian (split)", nbins, minX, maxX);
+            TH1D* splitH = new TH1D(concat(hists->at(k)->GetName(), concat(del, i).c_str()).c_str(), "Contains a gaussian (split)", nbins, minX, maxX);
 
-            int splitBin = ((nPeaks-1 == j)? splitH->GetSize() : (localPeaks->at(j) + localPeaks->at(j+1))/2.0 );
+            int splitBin = ((localPeaks->size()-1 == i)? splitH->GetSize() : (localPeaks->at(i) + localPeaks->at(i+1))/2.0 );
             //std::cout << "Copying from bin " << last << " to bin " << splitBin << std::endl;
             //std::cout << "For peak index " << j << ", out of " << nPeaks << std::endl;
             //std::cout << "And peak x: " << localPeaks->at(j) << std::endl;
-            for (int k = last; k < splitBin; k++)
+            for (int j = last; j < splitBin; j++)
             {
-                splitH->AddBinContent(k, hists->at(i)->GetBinContent(k));    
+                splitH->AddBinContent(j, hists->at(k)->GetBinContent(j));    
             }
-            last = splitBin; 
+            last = splitBin;
             tHists.push_back(splitH);
-        }
-        //sort by pulse Height
+
+        }//sort by pulse Height
         tHists = sort(tHists);
         for (int j = 0; j < tHists.size();j++)
         {
-            globHists[i].push_back(tHists.at(j));
+            globHists[k].push_back(tHists.at(j));
         }
     }
-    //Plots must be meaningfully correlated to justify recombining
-    //pulse heights are correlated in the same gem but not across
-    const Double_t sigLevel = 20;
-    for (int j = 0; j < globHists[0].size(); j++)
-    {
-        for (int k = 0; k < 6; k++)
-        {
-            if (TMath::Abs(scoreHist(globHists[k].at(j)) - scoreHist(globHists[k].at(j))) > sigLevel)
-            {
-                std::cerr << "Skipping. X and Y don't correlate enough to justify resolving ambiguity" << std::endl;
-                hists->clear();
-                return;
-            }
-            else if (j < globHists[k].size()-1 && TMath::Abs(scoreHist(globHists[k].at(j)) - scoreHist(globHists[k].at(j+1))) < sigLevel)
-            {
-                std::cerr << "Skipping. Two histograms in the same dimension are too close to justify resolving ambiguity" << std::endl;
-                std::cerr << "Hist 1: " << scoreHist(globHists[k].at(j)) << std::endl;
-                std::cerr << "Hist 2: " << scoreHist(globHists[k].at(j+1)) << std::endl;
-                
-                TCanvas *can = new TCanvas();
-                globHists[k].at(j)->DrawCopy();
-                can = new TCanvas();
-                globHists[k].at(j+1)->DrawCopy();
-                hists->clear();
-                return;
-            }
-        }
-    }
-    hists->erase(hists->begin(), hists->begin()+nentries);
+    // Plots must be meaningfully correlated to justify recombining
+    // pulse heights are correlated in the same gem but not across
+    // Thoughts: Make hits with everything close enough and embrace a larger n
+    
+    // Every time an x and y can match up, 
+    // generate a different context permutation they are switched
+    // later, pick the "best fit" permutation
+    
+    getPermutations(globHists, 0, permutations);    
+    std::cout << "Permutations: " << permutations->size() << std::endl;
     //Track matching will be taken care of later.
-    for (int j = 0; j < globHists[0].size(); j++)
-    {
-        for (int k = 0; k < 6; k++)
-        {
-            hists->push_back(globHists[k].at(j));
-        }
-    }
+    return permutations;
 }
-
-
-/*Double_t getCenter(TH1D* hist)
-  {
-  double sigLevel = hist->Integral()/hist->GetSize();
-  for (int k = 0; k < hist->GetSize(); k++)
-  {
-//std::cout << hist->GetBinContent(k) << " vs " << sigLevel << std::endl;
-if (hist->GetBinContent(k) < sigLevel)
-hist->SetBinContent(k, 0);    
-}
-gaus->SetParameters(1, 5, .3); //amplitude, xmean, xsigma
-hist->Fit("mygaus", "MR");
-Double_t center = gaus->GetParameter(1);
-return center;
-}*/
 
 Double_t getCenter(TH1D* hist, Double_t &uncert)
 {
@@ -304,7 +369,7 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     Double_t wIntegral = 0;
     Double_t Integral = 0;
     //FIXME assume signal is higher than the noise
-   
+
     int presumedMiddle = hist->GetMaximumBin();
     int start = presumedMiddle - signalHalfWidth;
     int stop = presumedMiddle + signalHalfWidth;
@@ -320,12 +385,12 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     }
     //Propagate uncertainty in measurement
     //dWeighted and dIntegral are both already squared
-    std::cout << "wInt: " << wIntegral << std::endl;
-    std::cout << "Int: " << Integral << std::endl;
+    //std::cout << "wInt: " << wIntegral << std::endl;
+    //std::cout << "Int: " << Integral << std::endl;
     Double_t binIndex = wIntegral / Integral;
     Double_t dBinIndex = sqrt(dWeightedIntegral/(pow(wIntegral,2)) +
             dIntegral/pow(Integral,2)) * binIndex;
-    
+
 
     //TCanvas *c = new TCanvas();
     //hist->DrawCopy();
@@ -344,7 +409,7 @@ void convertRaw(bool skipOffsets=false)
     gROOT->ProcessLine(".L checkLine.c");
 
     std::cout << "Number of bins: " << nbins << std::endl;
-    
+
     //Fille offset arrays (12 Double_t per gem)
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
     Double_t uxRot[3], uyRot[3], uzRot[3], uxTrans[3], uyTrans[3], uzTrans[3];
@@ -368,8 +433,8 @@ void convertRaw(bool skipOffsets=false)
         treeConf->SetBranchAddress("gems.uxRot", &tuxRot);
         treeConf->SetBranchAddress("gems.uyRot", &tuyRot);
         treeConf->SetBranchAddress("gems.uzRot", &tuzRot);
-        
-        if (treeConf->GetEntries() != 3)
+
+        if (treeConf->GetEntries() != nGems)
         {
             std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
             exit(0);
@@ -383,7 +448,7 @@ void convertRaw(bool skipOffsets=false)
             xTrans[i] = txTrans;      
             yTrans[i] = tyTrans;      
             zTrans[i] = tzTrans;
-            
+
             uxRot[i] = tuxRot;      
             uyRot[i] = tuyRot;      
             uzRot[i] = tuzRot;      
@@ -394,6 +459,7 @@ void convertRaw(bool skipOffsets=false)
             //std::cout << "zTrans" << zTrans[i] << std::endl;
         }
     }
+    TFile out("tracks.root", "RECREATE");
     TTree* res = new TTree("T", "Contains corrected particle tracks");
 
     Track *tr;
@@ -401,92 +467,133 @@ void convertRaw(bool skipOffsets=false)
     const int nentries = total;
     for (int j = 0; j < nentries; j++)
     {
-        std::vector< TH1D* >* raw = getHists(j);
-        splitHists(raw);
-        std::vector< Point > topPoints, midPoints, botPoints;
+        std::vector< TH1D* > *raw = getHists(j);
 
-        for (int k = 0; k < raw->size()/6; k++)
+        std::vector< std::vector< TH1D* >* >* permHists;
+        std::vector< std::vector <Track> > optionsVec;
+        permHists = splitHists(raw);
+        std::cout << "permHists size: " << permHists->size() << std::endl;
+        if (permHists->size() == 0) continue;
+        for (int p = 0; p < permHists->size(); p++)
         {
-            Double_t x[3], y[3], z[3];
-            Vector uncert[3];
-            for (int i = 0; i < 3; i++)
-            {     
+            std::vector< Point > topPoints, midPoints, botPoints;
+            std::cout << "p: " << p << " / " << permHists->size() << std::endl;
+            std::vector< TH1D* >* globHists = permHists->at(p);
+            for (int i = 0; i < nGems; i++)
+            {
+                Double_t x, y, z;
+                Vector uncert;
+                for (int k = 0; k < globHists[2*i].size(); k++)
+                {     
+                    Double_t ux, uy, uz;
+                    x = getCenter(globHists[2*i].at(k), ux);
+                    y = getCenter(globHists[2*i+1].at(k), uy);
+                    z = 0;//200 - i*100;
+                    uz = 0; //resolving XY center has no bearing on Z uncertaianty
+                    uncert[0] = ux;
+                    uncert[1] = uy;
+                    uncert[2] = uz;
+                    //std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
+                    Vector v(x, y, z);
+                    //Vector v(1, 2, 3);
+                    v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
+                    v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
 
-                Double_t ux, uy, uz;
-                x[i] = getCenter(raw->at(6*k+2*i), ux);
-                y[i] = getCenter(raw->at(6*k+2*i+1), uy);
-                z[i] = 0;//200 - i*100;
-                uz = 0; //resolving XY center has no bearing on Z uncertaianty
-                uncert[i][0] = ux;
-                uncert[i][1] = uy;
-                uncert[i][2] = uz;
-                std::cout << "from (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;  
-                Vector v(x[i], y[i], z[i]);
-                //Vector v(1, 2, 3);
-                v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
-                v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
-                
-                uncert[i] = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], x[i], y[i], z[i], uncert[i]);
-                uncert[i] = addUncert(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert[i]);
-                
-                x[i] = v[0];
-                y[i] = v[1];
-                z[i] = v[2] + 200 - i*100;
-                std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
+                    uncert = rotateUncert(xRot[i], yRot[i], zRot[i], uxRot[i], uyRot[i], uzRot[i], x, y, z, uncert);
+                    uncert = addUncert(getTranslation(uxTrans[i], uyTrans[i], uzTrans[i]), uncert);
+
+                    x = v[0];
+                    y = v[1];
+                    z = v[2] + 200 - i*100;
+                    //std::cout << "to (x, y, z): (" << x[i] << ", " << y[i] << ", " << z[i] << ")" << std::endl;   
+                    Point point(x, y, z, uncert[0], uncert[1], uncert[2]);
+                    //printPoint(point);
+                    if (i == 0)  
+                        topPoints.push_back(point);
+                    else if (i == 1)  
+                        midPoints.push_back(point);
+                    else  
+                        botPoints.push_back(point);
+                }
             }
 
-            Point A(x[0],y[0],z[0], uncert[0][0], uncert[0][1], uncert[0][2]);
-            Point B(x[1],y[1],z[1], uncert[1][0], uncert[1][1], uncert[1][2]);
-            Point C(x[2],y[2],z[2], uncert[2][0], uncert[2][1], uncert[2][2]);
-            std::cout << "A: " << std::endl;
-            printPoint(A); 
-            std::cout << "B: " << std::endl;
-            printPoint(B); 
-            std::cout << "C: " << std::endl;
-            printPoint(C); 
-            
-            topPoints.push_back(A);
-            midPoints.push_back(B);
-            botPoints.push_back(C);
-        }
-        //TODO n^3 (but for a small n this is fine)
-        for (int t = 0; t < topPoints.size(); t++)
-        {
+            //TODO n^3 (but for a small n this is fine)
+
+            std::cout << "topSize: " << topPoints.size() << std::endl;
+            std::cout << "midSize: " << midPoints.size() << std::endl;
+            std::cout << "botSize: " << botPoints.size() << std::endl;
+            //for (int i = 0; i< nGemReadouts; i++)
+            //    std::cout << "globHists " << i << ": " << globHists[i].size() << std::endl;
+            std::cout << "top points" << std::endl;
+            for (int t = 0; t < topPoints.size(); t++)
+                printPoint(topPoints.at(t));
+            std::cout << "mid points" << std::endl;
+            for (int t = 0; t < midPoints.size(); t++)
+                printPoint(midPoints.at(t));
+            std::cout << "bot points" << std::endl;
+            for (int t = 0; t < botPoints.size(); t++)
+                printPoint(botPoints.at(t));
+
+
+
             std::vector <Track> options;
-            for (int m = 0; m < midPoints.size(); m++)
+            for (int t = 0; t < topPoints.size(); t++)
             {
-                for (int b = 0; b < botPoints.size(); b++)
+                int startSize = options.size();
+                for (int m = 0; m < midPoints.size(); m++)
                 {
-                    Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
-                    if (noOffsets || isWithinUncert(check))
+                    for (int b = 0; b < botPoints.size(); b++)
                     {
-                        options.push_back(check);
+                        Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
+                        if (noOffsets || isWithinUncert(check))
+                        {
+                            options.push_back(check);
+                        }
                     }
                 }
+                if (options.size() != startSize+1)
+                {
+                    options.clear();
+                    break;
+                }
             }
-            std::cout << "options size: " << options.size() << std::endl;
-            if (options.size() == 1)
+            if (options.size() == topPoints.size())
+                optionsVec.push_back(options);
+            //std::cout << "Pushing back options " << std::endl;
+        }
+        //FIXME is a cut the best way to reduce false tracks?
+        std::cout << "optionsVec size: " << optionsVec.size() << std::endl;
+        if (optionsVec.size() > 1)
+        {
+            std::cerr << "Too many physically valid tracks. Use tighter constraints." << std::endl;
+            /*for (int i = 0; i < optionsVec.size(); i++)
             {
-                visualize(options.at(0)[0], options.at(0)[1], options.at(0)[2]);
-                tr = new Track(options.at(0)[0], options.at(0)[1], options.at(0)[2]); 
-                res->Fill();
-            }
-            else
-            { 
-                if (options.size() > 1)
+                std::vector <Track> options = optionsVec.at(i);
+                std::cout << "Option #" << i << std::endl;
+                std::cout << "size: " << options.size() << std::endl;
+                for (int k = 0; k < options.size(); k++)
                 {
-                    std::cerr << "Too many valid track configurations." << std::endl;   
+                    std::cout << "Track " << k << std::endl;
+                    printPoint(options.at(k)[0]);   
+                    printPoint(options.at(k)[1]);   
+                    printPoint(options.at(k)[2]);   
                 }
-                else
-                {
-                    std::cerr << "Too few valid track configurations" << std::endl;
-                }
-                break;
-            }
+            }*/
+            continue;
+        }
+        else if (optionsVec.size() < 1)
+        {
+            std::cerr << "Too few physically valid tracks. Use looser constraints." << std::endl;
+            continue;
+        }
+        for (int i = 0; i < optionsVec.at(0).size(); i++)
+        {
+            tr = new Track(optionsVec.at(0).at(i)[0], optionsVec.at(0).at(i)[1], optionsVec.at(0).at(i)[2]); 
+            visualize(optionsVec.at(0).at(i)[0], optionsVec.at(0).at(i)[1], optionsVec.at(0).at(i)[2]); 
+            res->Fill();
         }
     } 
     std::cout << "Successfully processed " << res->GetEntries() << " / " << total << std::endl;
-    TFile out("tracks.root", "RECREATE");
     res->Write();
     out.Close();
     if (!noOffsets)

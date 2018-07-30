@@ -24,7 +24,7 @@ std::string concat(const char* str1, const char* str2)
 
 TH1D* getRandHist(double mean, std::string name)
 { 
-    gaus->SetParameters(1, mean, .1); //amplitude, xmean, xsigma
+    gaus->SetParameters(1, mean, .015); //amplitude, xmean, xsigma
     TH1D* raw = new TH1D(name.c_str(), "Simulated Gaussian + Noise", nbins, minX, maxX);
     raw->FillRandom("mygaus", 2000);
     for (int j = 0; j < raw->GetSize(); j++)
@@ -41,7 +41,7 @@ TH1D* getRandHist(const double* meanArr, const double* amplArr, int len, std::st
     //signals
     for (int i = 0; i < len; i++)
     {
-        gaus->SetParameters(1, meanArr[i], .1); //amplitude, xmean, xsigma
+        gaus->SetParameters(1, meanArr[i], .015); //amplitude, xmean, xsigma
         raw->FillRandom("mygaus", amplArr[i] * 2000);
     }
     //noise
@@ -76,12 +76,12 @@ void makeTracks()
     treeConf->Branch("gems.uyRot", &uyRot);
     treeConf->Branch("gems.uzRot", &uzRot);
 
-    uxTrans = 0.2;
-    uyTrans = 0.2;
-    uzTrans = 0.2;
-    uxRot = degToRad(0);
-    uyRot = degToRad(0);
-    uzRot = degToRad(0);
+    uxTrans = 0.001;
+    uyTrans = 0.001;
+    uzTrans = 0.001;
+    uxRot = degToRad(0.1);
+    uyRot = degToRad(0.1);
+    uzRot = degToRad(0.05);
     
     treeConf->Fill();
     //xTrans = 0.05;
@@ -90,12 +90,12 @@ void makeTracks()
     //xRot = degToRad(180.01);
     //yRot = degToRad(0.005);
     //zRot = degToRad(0.03);
-    uxTrans = 0.2;
-    uyTrans = 0.2;
-    uzTrans = 0.2;
+    uxTrans = 0.001;
+    uyTrans = 0.001;
+    uzTrans = 0.001;
     uxRot = degToRad(0.1);
     uyRot = degToRad(0.1);
-    uzRot = degToRad(0.1);
+    uzRot = degToRad(0.05);
     treeConf->Fill(); 
     treeConf->Fill();
 
@@ -109,13 +109,16 @@ void makeTracks()
     
     Point o(-5, -5, 0);
     
+    TRandom *myRand = new TRandom3(std::time(0));
     double* means[6];
     double* ampl[6];
-    
+    double minAmp = .8;
+    double maxAmp = 1.2;
+
     for (int i = 0; i < total; i++)
     {
         std::cout << "Generating " << i << std::endl;
-        int ntracks = 3;
+        int ntracks = 1;
         for (int j = 0; j < 6; j++)
         {
             means[j] = new double[ntracks];
@@ -128,9 +131,10 @@ void makeTracks()
             {
                 means[2*k][j] = t[k].x;
                 means[2*k+1][j] = t[k].y;
-                double diff = (rand()%5 -2)/10.0;
-                ampl[2*k][j] = 1 + diff;
-                ampl[2*k+1][j] = 1 + diff;
+                double amplitude = minAmp + myRand->Uniform(maxAmp-minAmp); 
+                ampl[2*k][j] = amplitude;
+                ampl[2*k+1][j] = amplitude;
+                std::cout << "Correlated Amplitudes: " << ampl[2*k][j] << ", " << ampl[2*k+1][j] << std::endl;
             }
         }
 
