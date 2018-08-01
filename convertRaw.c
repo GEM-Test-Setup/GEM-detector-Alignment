@@ -26,7 +26,7 @@ const int signalHalfWidth = 2;
 //The minimum signal. Double this can be split into 2 hits.
 const double signalMinIntegral = 1700; 
 //Any two energy peaks with a difference less than this can be correlated 
-const Double_t sigLevel = 200;
+const Double_t sigLevel = 50;
 
 
 const int nbins = 256;
@@ -37,7 +37,7 @@ TF1* gaus = new TF1("mygaus", "[0]*TMath::Gaus(x,[1],[2])", minX, maxX);
 TFile in("raw_gem.root");
 bool noOffsets = false;
 //FIXME better storage
-const int total = 200;
+const int total = 100;
 
 std::string concat(const char* str1, int index)
 {
@@ -180,47 +180,99 @@ std::vector<int> getPeaks(TH1D* hist)
 
 void getPermutations(std::vector< TH1D*>* start, int depth, std::vector< std::vector <TH1D*>* >* perms)
 {
-    std::cout << "Permuting with depth " << depth << std::endl;
-    std::cout << "Max Depth: " << start[0].size() << std::endl;
+    //std::cout << "Permuting with depth " << depth << std::endl;
+    //std::cout << "Max Depth: " << start[0].size() << std::endl;
     perms->push_back(start);
     if (depth == start[0].size())
     {
         //std::cout << "Base case" << std::endl;
         return;
     }
-    for (int i = depth; i < start[0].size()-1; i++)
+    for (int k = 0; k < nGems; k++)
     {
-        for (int j = 1; i+j < start[0].size(); j++)
+        for (int i = depth; i < start[2*k].size() && i < start[2*k+1].size(); i++)
         {
-            for (int k = 0; k < nGems; k++)
+            for (int j = 1; i+j < start[2*k].size() || i+j < start[2*k+1].size(); j++)
             {
-                if (TMath::Abs(scoreHist(start[2*k].at(i)) - scoreHist(start[2*k+1].at(i+j))) < sigLevel &&
-                TMath::Abs(scoreHist(start[2*k].at(i+j)) - scoreHist(start[2*k+1].at(i))) < sigLevel) 
+
+                if (i+j >= start[2*k].size())
                 {
-                    std::vector< TH1D* >* toAdd = new std::vector< TH1D* >[nGemReadouts];
-                    for (int m = 0; m < nGems; m++)
+                    if (TMath::Abs(scoreHist(start[2*k].at(i)) - scoreHist(start[2*k+1].at(i+j))) < sigLevel) 
                     {
-                        for (int l = 0; l < start[2*m].size(); l++)
+                        std::vector< TH1D* >* toAdd = new std::vector< TH1D* >[nGemReadouts];
+                        for (int m = 0; m < nGems; m++)
                         {
-                            if (k == m && l == i)
+                            for (int l = 0; l < start[2*m].size(); l++)
                             {
-                                toAdd[2*m].push_back(start[2*m].at(i+j));
-                                toAdd[2*m+1].push_back(start[2*m+1].at(i));
-                            } 
-                            else if (k == m && l == i+j)
-                            {
-                                toAdd[2*m].push_back(start[2*m].at(i));
-                                toAdd[2*m+1].push_back(start[2*m+1].at(i+j));
-                            }
-                            else
-                            {
-                                toAdd[2*m].push_back(start[2*m].at(l));
-                                toAdd[2*m+1].push_back(start[2*m+1].at(l));
+                                if (k == m && l == i)
+                                {
+                                    toAdd[2*m].push_back(start[2*m].at(i));
+                                    toAdd[2*m+1].push_back(start[2*m+1].at(i+j));
+                                } 
+                                else
+                                {
+                                    if (l < start[2*m].size()) toAdd[2*m].push_back(start[2*m].at(l));
+                                    if (l < start[2*m+1].size()) toAdd[2*m+1].push_back(start[2*m+1].at(l));
+                                }
                             }
                         }
+                        getPermutations(toAdd, i+1, perms);
                     }
-                    //std::cout << "Added at depth: " << depth << std::endl;
-                    getPermutations(toAdd, i+1, perms);
+                }
+                else if (i+j >= start[2*k+1].size())
+                {
+                    if (TMath::Abs(scoreHist(start[2*k].at(i+j)) - scoreHist(start[2*k+1].at(i))) < sigLevel) 
+                    {
+                        std::vector< TH1D* >* toAdd = new std::vector< TH1D* >[nGemReadouts];
+                        for (int m = 0; m < nGems; m++)
+                        {
+                            for (int l = 0; l < start[2*m+1].size(); l++)
+                            {
+                                if (k == m && l == i)
+                                {
+                                    toAdd[2*m].push_back(start[2*m].at(i+j));
+                                    toAdd[2*m+1].push_back(start[2*m+1].at(i));
+                                } 
+                                else
+                                {
+                                    if (l < start[2*m].size()) toAdd[2*m].push_back(start[2*m].at(l));
+                                    if (l < start[2*m+1].size()) toAdd[2*m+1].push_back(start[2*m+1].at(l));
+                                }
+                            }
+                        }
+                        getPermutations(toAdd, i+1, perms);
+                    }
+                }
+                else
+                {
+                    if (TMath::Abs(scoreHist(start[2*k].at(i)) - scoreHist(start[2*k+1].at(i+j))) < sigLevel &&
+                            TMath::Abs(scoreHist(start[2*k].at(i+j)) - scoreHist(start[2*k+1].at(i))) < sigLevel) 
+                    {
+                        std::vector< TH1D* >* toAdd = new std::vector< TH1D* >[nGemReadouts];
+                        for (int m = 0; m < nGems; m++)
+                        {
+                            for (int l = 0; l < start[2*m].size(); l++)
+                            {
+                                if (k == m && l == i)
+                                {
+                                    toAdd[2*m].push_back(start[2*m].at(i+j));
+                                    toAdd[2*m+1].push_back(start[2*m+1].at(i));
+                                } 
+                                else if (k == m && l == i+j)
+                                {
+                                    toAdd[2*m].push_back(start[2*m].at(i));
+                                    toAdd[2*m+1].push_back(start[2*m+1].at(i+j));
+                                }
+                                else
+                                {
+                                    if (l < start[2*m].size()) toAdd[2*m].push_back(start[2*m].at(l));
+                                    if (l < start[2*m+1].size()) toAdd[2*m+1].push_back(start[2*m+1].at(l));
+                                }
+                            }
+                        }
+                        //std::cout << "Added at depth: " << depth << std::endl;
+                        getPermutations(toAdd, i+1, perms);
+                    }
                 }
             }
         }
@@ -243,23 +295,25 @@ std::vector < std::vector< TH1D* >* >* splitHists(std::vector <TH1D*>* hists)
     }
 
     std::vector< std::vector< int > > peaks;
+    
     // FIXME can multiplicity be justified in the data? 
     // Is this a powerful enough model>
-    std::vector< std::vector< int > > multiplicity;
+    
+    //std::vector< std::vector< int > > multiplicity;
     //peaks.push_back(getPeaks(hists->at(0)));
-    int nPeaks = 0;//peaks[0].size();
+    //int nPeaks = 0;//peaks[0].size();
 
     for (int i = 0; i < nGemReadouts; i++)
     {
-        std::vector < int > peakMult;
+        //std::vector < int > peakMult;
         peaks.push_back(getPeaks(hists->at(i)));
-        int nPeaksCheck = peaks[i].size();;
-        std::cout << "Number of distinct peaks: " << nPeaksCheck << std::endl;
+        //int nPeaksCheck = peaks[i].size();;
+        //std::cout << "Number of distinct peaks: " << nPeaksCheck << std::endl;
         // there are two hits in similar enough xy positions that it
         // appears to be one peak of double integral
         // First, resolve cruedly for equal heights. Then, resolve better
 
-        int nMultPeaks = 0;
+        /*int nMultPeaks = 0;
         for (int j = 0; j < peaks[i].size(); j++)
         {
             peakMult.push_back(
@@ -272,34 +326,37 @@ std::vector < std::vector< TH1D* >* >* splitHists(std::vector <TH1D*>* hists)
             nPeaks = nMultPeaks;
         if (nMultPeaks != nPeaks)
         {
-            //TCanvas *c = new TCanvas();
-            //hists->at(i)->DrawCopy();
+            TCanvas *c = new TCanvas();
+            hists->at(i)->DrawCopy();
             std::cerr << "Skipping entry due to unexpected number of peaks in " << hists->at(i)->GetName() << std::endl;
             std::cerr << "expected peaks: " << nPeaks << ", " << "seen peaks: " << nPeaksCheck << " (" << nMultPeaks << ")" <<  std::endl;
             return permutations;
         }
         multiplicity.push_back(peakMult);
         //std::cout << "Number of hit-peaks: " << nMultPeaks << std::endl;
+        */
     }
 
     //validation complete. Begin splitting
-    if (nPeaks <= 0)
-    {
-        std::cerr << "Skipping due to no peaks found. anywhere." << std::endl;
-        return permutations;
-    }
-    if (nPeaks != 1 && noOffsets)
-    {
-        std::cerr << "Only single tracks are able to be resolved without offsets" << std::endl;
-        return permutations;
-    }
     for (int k = 0; k < nGemReadouts; k++)
     {
+        int nPeaks = peaks[k].size();
+        if (nPeaks <= 0)
+        {
+            std::cerr << "Skipping due to no peaks found. anywhere." << std::endl;
+            return permutations;
+        }
+        if (nPeaks != 1 && noOffsets)
+        {
+            std::cerr << "Only single tracks are able to be resolved without offsets" << std::endl;
+            return permutations;
+        }
+
         int last = 0;
         std::vector< int >* localPeaks = &peaks[k];
         std::vector< TH1D* > tHists;
         //int multSum = 0;
-        std::cout << "localPeaks size: " << localPeaks->size() << std::endl;
+        //std::cout << "localPeaks size: " << localPeaks->size() << std::endl;
         for (int i = 0; i < localPeaks->size(); i++)
         {
             //multSum += localMult->at(i)-1;
@@ -327,13 +384,16 @@ std::vector < std::vector< TH1D* >* >* splitHists(std::vector <TH1D*>* hists)
     // Plots must be meaningfully correlated to justify recombining
     // pulse heights are correlated in the same gem but not across
     // Thoughts: Make hits with everything close enough and embrace a larger n
-    
+
     // Every time an x and y can match up, 
     // generate a different context permutation they are switched
     // later, pick the "best fit" permutation
-    
+
+    //FIXME first one is charge order not charge. Check to cut
     getPermutations(globHists, 0, permutations);    
-    std::cout << "Permutations: " << permutations->size() << std::endl;
+    
+    
+    //std::cout << "Permutations: " << permutations->size() << std::endl;
     //Track matching will be taken care of later.
     return permutations;
 }
@@ -353,11 +413,11 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
     }
 
     Double_t edgeLevel = TMath::Max(leftAvg, rightAvg);
-    Double_t sigLevel = TMath::Max(edgeLevel, hist->Integral()/hist->GetSize());
+    Double_t cutLevel = TMath::Max(edgeLevel, hist->Integral()/hist->GetSize());
     for (int k = 0; k <= hist->GetSize(); k++)
     {
-        //std::cout << hist->GetBinContent(k) << " vs " << sigLevel << std::endl;
-        if (hist->GetBinContent(k) < sigLevel){
+        //std::cout << hist->GetBinContent(k) << " vs " << cutLevel << std::endl;
+        if (hist->GetBinContent(k) < cutLevel){
             hist->SetBinContent(k, 0);    
         }
     }
@@ -408,7 +468,7 @@ void convertRaw(bool skipOffsets=false)
     gROOT->ProcessLine(".L linalg.h+");
     gROOT->ProcessLine(".L checkLine.c");
 
-    std::cout << "Number of bins: " << nbins << std::endl;
+    //std::cout << "Number of bins: " << nbins << std::endl;
 
     //Fille offset arrays (12 Double_t per gem)
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
@@ -472,18 +532,20 @@ void convertRaw(bool skipOffsets=false)
         std::vector< std::vector< TH1D* >* >* permHists;
         std::vector< std::vector <Track> > optionsVec;
         permHists = splitHists(raw);
-        std::cout << "permHists size: " << permHists->size() << std::endl;
+        //std::cout << "permHists size: " << permHists->size() << std::endl;
         if (permHists->size() == 0) continue;
+
+        std::cout << "Checking " << TMath::Power(permHists->at(0)[0].size(), 3) * permHists->size() << " possible permutations." << std::endl;
         for (int p = 0; p < permHists->size(); p++)
         {
             std::vector< Point > topPoints, midPoints, botPoints;
-            std::cout << "p: " << p << " / " << permHists->size() << std::endl;
+            //std::cout << "p: " << p << " / " << permHists->size() << std::endl;
             std::vector< TH1D* >* globHists = permHists->at(p);
             for (int i = 0; i < nGems; i++)
             {
                 Double_t x, y, z;
                 Vector uncert;
-                for (int k = 0; k < globHists[2*i].size(); k++)
+                for (int k = 0; k < globHists[2*i].size() && k < globHists[2*i+1].size(); k++)
                 {     
                     Double_t ux, uy, uz;
                     x = getCenter(globHists[2*i].at(k), ux);
@@ -519,29 +581,33 @@ void convertRaw(bool skipOffsets=false)
 
             //TODO n^3 (but for a small n this is fine)
 
-            std::cout << "topSize: " << topPoints.size() << std::endl;
-            std::cout << "midSize: " << midPoints.size() << std::endl;
-            std::cout << "botSize: " << botPoints.size() << std::endl;
+            //std::cout << "topSize: " << topPoints.size() << std::endl;
+            //std::cout << "midSize: " << midPoints.size() << std::endl;
+            //std::cout << "botSize: " << botPoints.size() << std::endl;
             //for (int i = 0; i< nGemReadouts; i++)
             //    std::cout << "globHists " << i << ": " << globHists[i].size() << std::endl;
-            std::cout << "top points" << std::endl;
-            for (int t = 0; t < topPoints.size(); t++)
-                printPoint(topPoints.at(t));
-            std::cout << "mid points" << std::endl;
-            for (int t = 0; t < midPoints.size(); t++)
-                printPoint(midPoints.at(t));
-            std::cout << "bot points" << std::endl;
-            for (int t = 0; t < botPoints.size(); t++)
-                printPoint(botPoints.at(t));
+            /*std::cout << "top points" << std::endl;
+              for (int t = 0; t < topPoints.size(); t++)
+              printPoint(topPoints.at(t));
+              std::cout << "mid points" << std::endl;
+              for (int t = 0; t < midPoints.size(); t++)
+              printPoint(midPoints.at(t));
+              std::cout << "bot points" << std::endl;
+              for (int t = 0; t < botPoints.size(); t++)
+              printPoint(botPoints.at(t));
+              */
 
-
+            // flag used to prevent multiple tracks having the same point 
+            // in any given permutation
+            bool goodOption = true;
 
             std::vector <Track> options;
             for (int t = 0; t < topPoints.size(); t++)
             {
-                int startSize = options.size();
+                int topSize = options.size();
                 for (int m = 0; m < midPoints.size(); m++)
                 {
+                    int midSize = options.size();
                     for (int b = 0; b < botPoints.size(); b++)
                     {
                         Track check(topPoints.at(t), midPoints.at(m), botPoints.at(b));
@@ -550,47 +616,81 @@ void convertRaw(bool skipOffsets=false)
                             options.push_back(check);
                         }
                     }
+                    if (options.size() > midSize+1)
+                        goodOption = false;
+                    if (!goodOption) break;
                 }
-                if (options.size() != startSize+1)
-                {
-                    options.clear();
-                    break;
-                }
+                if (options.size() > midSize+1)
+                    goodOption = false;
+                if (!goodOption) break;
             }
-            if (options.size() == topPoints.size())
+            if (goodOption)
                 optionsVec.push_back(options);
-            //std::cout << "Pushing back options " << std::endl;
         }
         //FIXME is a cut the best way to reduce false tracks?
-        std::cout << "optionsVec size: " << optionsVec.size() << std::endl;
-        if (optionsVec.size() > 1)
+        //std::cout << "optionsVec size: " << optionsVec.size() << std::endl;
+        int limiter = TMath::Min(TMath::Min(topPoints.size(), midPoints.size()), botPoints.size());
+        if (optionsVec.size() >= 1)
         {
-            std::cerr << "Too many physically valid tracks. Use tighter constraints." << std::endl;
-            /*for (int i = 0; i < optionsVec.size(); i++)
+            // score tracks to determine the best
+            int maxViability = -1;
+            std::vector< std::vector <Track> > viable;
+            for (int i = 0; i < optionsVec.size(); i++)
             {
                 std::vector <Track> options = optionsVec.at(i);
-                std::cout << "Option #" << i << std::endl;
-                std::cout << "size: " << options.size() << std::endl;
-                for (int k = 0; k < options.size(); k++)
+                if (options.size() > limiter)
                 {
-                    std::cout << "Track " << k << std::endl;
-                    printPoint(options.at(k)[0]);   
-                    printPoint(options.at(k)[1]);   
-                    printPoint(options.at(k)[2]);   
+                    std::cerr << "Impossible number of tracks generated in permutation." << std::endl;
+                    std::cerr << "This should be prevented by the internal goodOptions flag." << std::endl;
+                    exit();
                 }
-            }*/
-            continue;
+                // for now viability is number of unique resolved tracks
+                int viab = limiter - options.size();
+                if (viab > maxViability)
+                {
+                    viable.clear();
+                    maxViability = viab;
+                    viable.push_back(options);
+                }
+                else if (viab == maxViability)
+                {
+                    viable.push_back(options);
+                }
+
+                //std::cout << "Option #" << i << std::endl;
+                //std::cout << "size: " << options.size() << std::endl;
+                /*for (int k = 0; k < options.size(); k++)
+                  {
+                  std::cout << "Track " << k << std::endl;
+                  printPoint(options.at(k)[0]);   
+                  printPoint(options.at(k)[1]);   
+                  printPoint(options.at(k)[2]);   
+                  }
+                  */
+            }
+            if (viable.size() == 1)
+            {
+                for (int i = 0; i < viable.at(0).size(); i++)
+                {
+                    // no need to score or resolve, we can safely just use it
+                    tr = new Track(viable.at(0).at(i)[0], viable.at(0).at(i)[1], viable.at(0).at(i)[2]); 
+                    visualize(viable.at(0).at(i)[0], viable.at(0).at(i)[1], viable.at(0).at(i)[2]);  
+                    res->Fill();
+                }
+            }
+            else
+            {
+                if (viable.size() < 1)
+                    std::cerr << "Too few viable track options" << std::endl;
+                else
+                    std::cerr << "Too many viable track options" << std::endl;
+                continue;
+            }
         }
-        else if (optionsVec.size() < 1)
+        else
         {
             std::cerr << "Too few physically valid tracks. Use looser constraints." << std::endl;
             continue;
-        }
-        for (int i = 0; i < optionsVec.at(0).size(); i++)
-        {
-            tr = new Track(optionsVec.at(0).at(i)[0], optionsVec.at(0).at(i)[1], optionsVec.at(0).at(i)[2]); 
-            visualize(optionsVec.at(0).at(i)[0], optionsVec.at(0).at(i)[1], optionsVec.at(0).at(i)[2]); 
-            res->Fill();
         }
     } 
     std::cout << "Successfully processed " << res->GetEntries() << " / " << total << std::endl;

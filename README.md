@@ -21,14 +21,23 @@ Useful selected methods:
   * getRotation 
     * returns a rotation matrix for the input radians about each axis
     * getRotation(double xAxis=0, double yAxis=0, double zAxis=0)
+
+# makeTrack.c
+Generates tracks using cos^2 sin distribution and stores them as histograms. 
+
 # convertRaw.c
 Converts histograms (x: adc channel y: signal) into tracks. option skipOffset skips uncertainty 
-  * For every 12 histograms attepmts to reconstruct atleast one track 
-    * if there are mutliple signal peaks per histogram (assumed gaussian), it splits them
-    * if there is an inconsistent amount of peaks or the peaks are too close (in any xy plane) to resolve ambiguity, skip the data
-    * used a signal weighted integral to determine the centroid of the peak and uncertainty associated with this centroid
-    * if too many or not enough track combinations are possible within uncertainty, skip the data.
-    * writes these tracks to file and visualizes them using checkLine.c
+  * Initial conditions must be well fit to the data to get physically possible tracks in a reasonable amount of time 
+    * signalHalfWidth (bins) is used to debounce peaks and determine integration range for the centroid
+    * nGems number of gems)
+    * nGemReadouts number of gem readout planes (likely nGems x 2, 1 readout for x and y)
+    * signalMinIntegral used to determine multiplicity, assuming the distribtuion allows
+    * sigLevel the maximum allowed difference in charge integral for two correlated planes 
+    * Tracks are resolved by generating all charge-correlated permutations then resolving geometricaly (after applying offsets)
+    * This has a poor time complexity, but due to the charge cut, n remains small.
+    * In a denser tracking environment with a narrower charge range a less strict and more approximative method may be preferred
+    * However, this code can succeed in a denser tracking environment given a strict and accurate charge correlation cut (see sigLevel)
+
 # checkLine.c
 Used for 3d track visualization
   * initVisualize
@@ -44,9 +53,6 @@ Used for 3d track visualization
     * draws a track to the 3d graph with uncertainty bars
     * visualize(Point, Point, Point)
     * visualize(Track)
-# regress.c
-Used to determine track all offsets 
-WIP
 
 # Z_Rotation_Regression.C
 Calculates Z rotation offset and associated translation constants
