@@ -160,15 +160,8 @@ void visXTransTest()
     visualize(D, E, F);
 }
 
-void lintest()
+void functest()
 {
-    //visXRotTest();
-    //visYRotTest();
-    //visZRotTest();
-    visZBodyRotTest();
-    //clearVis();
-    //visXTransTest();
-
     Vector v;//= getTranslation(1, 2, 3);    
     printVector(v);
     Vector w = getTranslation(2, 3, 4);
@@ -215,7 +208,42 @@ void lintest()
     
     std::cout << "Printing identity by 0 rot" << std::endl;
     Matrix m = getRotation(0,0,0);
-    printMatrix(m);
-    
-    
+    printMatrix(m);    
+
 }
+void inverttest()
+{
+    Vector v(1, 2, 3);
+    double a = 1.5;
+    double b = 2;
+    double c = 3;
+    Vector x = multiply(getRotation(a, b, c), v);
+    std::cout << "det: " << det( getRotation(a, b, c)) << std::endl;
+    printVector(x);
+    //v = add(getTranslation(4, 5, 6), v);
+    //v = add(getTranslation(-4, -5, -6), v);
+    Vector y = multiply(getInvertRotation(a, b, c), x);
+    std::cout << "det: " << det( getInvertRotation(a, b, c)) << std::endl;
+    std::cout << "y: " << std::endl;
+    printVector(y);
+    std::cout << "Test Matix: " << std::endl;
+    printMatrix(getRotation(a, b, c));
+    std::cout << "Inverse/Transpose Matix: " << std::endl;
+    printMatrix(getInvertRotation(a, b, c));
+    std::cout << "Identity by inverse: " << std::endl;
+    printMatrix(multiply(getRotation(a, b, c), getInvertRotation(a, b, c)));
+
+}
+
+void lintest()
+{
+    //visXRotTest();
+    //visYRotTest();
+    //visZRotTest();
+    //visZBodyRotTest();
+    //clearVis();
+    //visXTransTest();
+    //functest();
+    inverttest();
+}
+

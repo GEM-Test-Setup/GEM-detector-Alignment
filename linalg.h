@@ -365,13 +365,7 @@ Matrix getRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
 
 Matrix getInvertRotation(Double_t xRad, Double_t yRad, Double_t zRad)
 {
-    return multiply(multiply(getRotation(0,0,-zRad), getRotation(0,-yRad)), getRotation(-xRad));
-}
-
-Matrix getBodyRotation(Double_t xRad=0, Double_t yRad=0, Double_t zRad=0)
-{
-    //TODO Should be right but needs testing
-    return multiply(multiply(getRotation(0,0,-zRad), getRotation(0, -yRad)), getRotation(xRad, yRad, zRad));
+    return multiply(getRotation(0,0,zRad), multiply(getRotation(0, -yRad), getRotation(-xRad)));
 }
 
 Vector rotateUncert(Double_t xRad, Double_t yRad, Double_t zRad, Double_t uxRad, Double_t uyRad, Double_t uzRad, Double_t x, Double_t y, Double_t z, const Vector &uncert)
