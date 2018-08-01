@@ -76,6 +76,13 @@ void makeTracks()
     treeConf->Branch("gems.uyRot", &uyRot);
     treeConf->Branch("gems.uzRot", &uzRot);
 
+    xTrans = 0;
+    yTrans = 0;
+    zTrans = 0;
+    xRot = degToRad(0);
+    yRot = degToRad(0);
+    zRot = degToRad(0);
+    
     uxTrans = 0.001;
     uyTrans = 0.001;
     uzTrans = 0.001;
@@ -84,23 +91,80 @@ void makeTracks()
     uzRot = degToRad(0.05);
     
     treeConf->Fill();
-    //xTrans = 0.05;
-    //yTrans = 0.05;
-    //zTrans = 0.05;
-    //xRot = degToRad(180.01);
-    //yRot = degToRad(0.005);
-    //zRot = degToRad(0.03);
+    treeConf->Fill(); 
+    
+    xTrans = 0;
+    yTrans = 0;
+    zTrans = 0;
+    xRot = degToRad(0.01);
+    yRot = degToRad(0.00);
+    zRot = degToRad(90.03);
     uxTrans = 0.001;
     uyTrans = 0.001;
     uzTrans = 0.001;
     uxRot = degToRad(0.1);
     uyRot = degToRad(0.1);
     uzRot = degToRad(0.05);
-    treeConf->Fill(); 
     treeConf->Fill();
 
     treeConf->Write();
     conf.Close();
+    
+    TFile conf("offsets.root");
+    
+    Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
+    Double_t uxRot[3], uyRot[3], uzRot[3], uxTrans[3], uyTrans[3], uzTrans[3];
+    
+    TTree* treeConf = (TTree*)conf.Get("T");   
+    
+    Double_t txRot, tyRot, tzRot, txTrans, tyTrans, tzTrans;
+    Double_t tuxRot, tuyRot, tuzRot, tuxTrans, tuyTrans, tuzTrans;
+
+    treeConf->SetBranchAddress("gems.xTrans", &txTrans);
+    treeConf->SetBranchAddress("gems.yTrans", &tyTrans);
+    treeConf->SetBranchAddress("gems.zTrans", &tzTrans);
+    treeConf->SetBranchAddress("gems.xRot", &txRot);
+    treeConf->SetBranchAddress("gems.yRot", &tyRot);
+    treeConf->SetBranchAddress("gems.zRot", &tzRot);
+
+    treeConf->SetBranchAddress("gems.uxTrans", &tuxTrans);
+    treeConf->SetBranchAddress("gems.uyTrans", &tuyTrans);
+    treeConf->SetBranchAddress("gems.uzTrans", &tuzTrans);
+    treeConf->SetBranchAddress("gems.uxRot", &tuxRot);
+    treeConf->SetBranchAddress("gems.uyRot", &tuyRot);
+    treeConf->SetBranchAddress("gems.uzRot", &tuzRot);
+
+    if (treeConf->GetEntries() != nGems)
+    {
+        std::cerr << treeConf->GetEntries() << " entries in offset. Expected 3" << std::endl;
+        exit(0);
+    }
+    for (int i = 0; i < treeConf->GetEntries(); i++)
+    {
+        treeConf->GetEntry(i);
+        xRot[i] = txRot;      
+        yRot[i] = tyRot;      
+        zRot[i] = tzRot;      
+        xTrans[i] = txTrans;      
+        yTrans[i] = tyTrans;      
+        zTrans[i] = tzTrans;
+
+        uxRot[i] = tuxRot;      
+        uyRot[i] = tuyRot;      
+        uzRot[i] = tuzRot;      
+        uxTrans[i] = tuxTrans;      
+        uyTrans[i] = tuyTrans;      
+        uzTrans[i] = tuzTrans;
+
+        //std::cout << "zTrans" << zTrans[i] << std::endl;
+    }
+    
+    TFile out("tracks.root", "RECREATE");
+    TTree* res = new TTree("T", "Contains corrected particle tracks");
+
+    Track *tr;
+    res->Branch("tracks", "Track", &tr);
+    const int nentries = total;
      
     TFile rawFile("raw_gem.root", "RECREATE"); 
     
@@ -127,10 +191,21 @@ void makeTracks()
         for (int j = 0; j < ntracks; j++)
         {
             Track t = getGoodTrack(o, 10, 10, 100, 100);
+
             for (int k = 0; k < 3; k++)
             {
-                means[2*k][j] = t[k].x;
-                means[2*k+1][j] = t[k].y;
+                double x = t[k].x;
+                double y = t[k].y;
+                double z = 0;
+                Vector v(x, y, z);
+                v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
+                v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
+                x = v[0];
+                y = v[1];
+                z = v[2] + 200 - i*100;
+
+                means[2*k][j] = x;
+                means[2*k+1][j] = y;
                 double amplitude = minAmp + myRand->Uniform(maxAmp-minAmp); 
                 ampl[2*k][j] = amplitude;
                 ampl[2*k+1][j] = amplitude;
