@@ -1,4 +1,6 @@
-// 07/09/18 Marisa Petrusky Event generator to be used with Z_Rotation_Regression.C
+// 07/09/18 Marisa Petrusky Event generator to be used with Z_Rotation_Regression_Truth.C
+// Includes truth information
+// ROOT file NOT compatible with tracking codes
 // Length Unit = cm
 // GEM 0 -> Top (Lab Frame)
 // GEM 1 -> Middle 
@@ -10,7 +12,7 @@
 #include "TMath.h"
 #include <string>
 
-void trackgenerator(int random_seed =0)
+void makeTruthTracks(int random_seed =0)
 {
 	gROOT->ProcessLine(".L linalg.h+");
 	
