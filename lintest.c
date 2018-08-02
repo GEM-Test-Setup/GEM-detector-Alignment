@@ -233,6 +233,10 @@ void inverttest()
     std::cout << "Identity by inverse: " << std::endl;
     printMatrix(multiply(getRotation(a, b, c), getInvertRotation(a, b, c)));
 
+    std::cout << "Identity by comm. inverse: " << std::endl;
+    printMatrix(multiply(getInvertRotation(a, b, c), getRotation(a, b, c)));
+
+
 }
 
 void lintest()

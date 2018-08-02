@@ -483,7 +483,7 @@ Double_t getCenter(TH1D* hist, Double_t &uncert)
 
 void convertRaw(bool skipOffsets=false)
 {
-    noOffsets = true;//skipOffsets;
+    noOffsets = skipOffsets;
     gROOT->ProcessLine(".L linalg.h+");
     gROOT->ProcessLine(".L checkLine.c");
 

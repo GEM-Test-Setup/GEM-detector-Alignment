@@ -52,12 +52,8 @@ TH1D* getRandHist(const double* meanArr, const double* amplArr, int len, std::st
     return raw; 
 }
 
-void makeTracks()
+void makeOffsets()
 {
-    gROOT->ProcessLine(".L linalg.h+");
-    gROOT->ProcessLine(".L rate_montecarlo.c");
-    gROOT->ProcessLine(".L convertRaw.c");
-    
     TFile conf("offsets.root", "RECREATE");
     Double_t xTrans, yTrans, zTrans, xRot, yRot, zRot;
     Double_t uxTrans, uyTrans, uzTrans, uxRot, uyRot, uzRot;
@@ -96,9 +92,9 @@ void makeTracks()
     xTrans = 0;
     yTrans = 0;
     zTrans = 0;
-    xRot = degToRad(0.01);
+    xRot = degToRad(0.00);
     yRot = degToRad(0.00);
-    zRot = degToRad(90.03);
+    zRot = degToRad(0.00);
     uxTrans = 0.001;
     uyTrans = 0.001;
     uzTrans = 0.001;
@@ -109,13 +105,22 @@ void makeTracks()
 
     treeConf->Write();
     conf.Close();
+
+}
+
+void makeTracks()
+{
+    gROOT->ProcessLine(".L linalg.h+");
+    gROOT->ProcessLine(".L rate_montecarlo.c");
+    gROOT->ProcessLine(".L convertRaw.c");
     
+    makeOffsets();
+
     TFile conf("offsets.root");
-    
     Double_t xRot[3], yRot[3], zRot[3], xTrans[3], yTrans[3], zTrans[3];
     Double_t uxRot[3], uyRot[3], uzRot[3], uxTrans[3], uyTrans[3], uzTrans[3];
     
-    TTree* treeConf = (TTree*)conf.Get("T");   
+    /*TTree* */treeConf = (TTree*)conf.Get("T");   
     
     Double_t txRot, tyRot, tzRot, txTrans, tyTrans, tzTrans;
     Double_t tuxRot, tuyRot, tuzRot, tuxTrans, tuyTrans, tuzTrans;
@@ -158,6 +163,7 @@ void makeTracks()
 
         //std::cout << "zTrans" << zTrans[i] << std::endl;
     }
+    conf.Close();
     
     TFile out("tracks.root", "RECREATE");
     TTree* res = new TTree("T", "Contains corrected particle tracks");
@@ -198,8 +204,9 @@ void makeTracks()
                 double y = t[k].y;
                 double z = 0;
                 Vector v(x, y, z);
-                v = multiply(getRotation(xRot[i], yRot[i], zRot[i]), v);
-                v = add(getTranslation(xTrans[i], yTrans[i], zTrans[i]), v);
+                v = multiply(getInvertRotation(xRot[k], yRot[k], zRot[k]), v);
+                v = add(getTranslation(-xTrans[k], -yTrans[k], -zTrans[k]), v);
+                printVector(v);
                 x = v[0];
                 y = v[1];
                 z = v[2] + 200 - i*100;
