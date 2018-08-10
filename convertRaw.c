@@ -8,7 +8,7 @@
 #include "TCanvas.h"
 #include <sstream>
 #include <cmath>
-
+#include <algorithm>
 //const Double_t resolution = (10.0/256.0)/sqrt(12.0);
 //
 //dQ uncertainty in a channel (assumed the same for every channel)
@@ -26,7 +26,7 @@ const int signalHalfWidth = 2;
 //The minimum signal. Double this can be split into 2 hits.
 const double signalMinIntegral = 1700; 
 //Any two energy peaks with a difference less than this can be correlated 
-const Double_t sigLevel = 200;
+const Double_t sigLevel = 150;
 
 
 const int nbins = 256;
@@ -622,8 +622,13 @@ void convertRaw(bool skipOffsets=false)
             bool goodOption = true;
 
             std::vector <Track> options;
+            std::vector <int> mDup;
+            std::vector <int> tDup;
             for (int t = 0; t < topPoints.size(); t++)
             {
+                // FIXME two different top points are 
+                // allowed to use the same midpoints under this cut
+                // this is a bug
                 int topSize = options.size();
                 for (int m = 0; m < midPoints.size(); m++)
                 {
@@ -634,13 +639,20 @@ void convertRaw(bool skipOffsets=false)
                         if (noOffsets || isWithinUncert(check))
                         {
                             options.push_back(check);
+                            if (std::find(mDup.begin(), mDup.end(), m) != mDup.end() || std::find(tDup.begin(), tDup.end(), t) != tDup.end())
+                            {
+                                goodOption = false; 
+                                break;
+                            }
+                            mDup.push_back(m);
+                            tDup.push_back(t);
                         }
                     }
                     if (options.size() > midSize+1)
                         goodOption = false;
                     if (!goodOption) break;
                 }
-                if (options.size() > midSize+1)
+                if (options.size() > topSize+1)
                     goodOption = false;
                 if (!goodOption) break;
             }
@@ -649,18 +661,22 @@ void convertRaw(bool skipOffsets=false)
         }
         //FIXME is a cut the best way to reduce false tracks?
         //std::cout << "optionsVec size: " << optionsVec.size() << std::endl;
-        int limiter = TMath::Min(TMath::Min(topPoints.size(), midPoints.size()), botPoints.size());
         if (optionsVec.size() >= 1)
         {
             // score tracks to determine the best
             int maxViability = -1;
             std::vector< std::vector <Track> > viable;
+            int limiter = TMath::Min(TMath::Min(topPoints.size(), midPoints.size()), botPoints.size());
             for (int i = 0; i < optionsVec.size(); i++)
             {
                 std::vector <Track> options = optionsVec.at(i);
                 if (options.size() > limiter)
                 {
                     std::cerr << "Impossible number of tracks generated in permutation." << std::endl;
+                    std::cerr << options.size() << " / " << limiter << " tracks found" << std::endl;
+                    std::cerr << "topSize: " << topPoints.size() << std::endl;
+                    std::cerr << "midSize: " << midPoints.size() << std::endl;
+                    std::cerr << "botSize: " << botPoints.size() << std::endl;
                     std::cerr << "This should be prevented by the internal goodOptions flag." << std::endl;
                     exit(1);
                 }
